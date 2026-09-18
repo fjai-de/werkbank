@@ -8,6 +8,18 @@ description: 'Macht eine App bereit für die Veröffentlichung auf dem Werkstatt
 Der Server gehört dem Workshop-Leiter. Er richtet die App **einmal** ein; danach baut jeder `git push`
 auf `main` sie automatisch neu. Teilnehmer bekommen keinen Server-Zugang und brauchen keinen.
 
+## 0 — Nur schnell zeigen? (ohne Server, sofort)
+
+Für „schau mal, läuft" reicht eine vorübergehende Adresse direkt vom eigenen Rechner — kein Konto, keine Kosten:
+
+```bash
+# einmalig:  Mac: brew install cloudflared     Windows: winget install Cloudflare.cloudflared
+cloudflared tunnel --url http://localhost:3000
+```
+
+Die ausgegebene `https://….trycloudflare.com`-Adresse gilt, solange das Terminal offen ist. Jeder mit dem Link
+sieht die App — nichts mit echten Daten oder Zugangsdaten so zeigen. Für dauerhaft online: weiter mit Schritt 1.
+
 ## 1 — Ist die App baubar? (selbst prüfen, nicht fragen)
 
 | Prüfung | Soll |
