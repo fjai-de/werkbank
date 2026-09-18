@@ -1,0 +1,15 @@
+{
+  "org": "fjai-de",
+  "apiUrl": "http://<coolify-ip>:8000",
+  "tokenVariable": "COOLIFY_TOKEN",
+  "projektUuid": "<uuid des Projekts Workshop>",
+  "serverUuid": "<uuid des Servers>",
+  "umgebung": "production",
+  "deployKeyUuid": "<uuid des Schluessels 'workshop-deploy' in Coolify>",
+  "deployKeyOeffentlich": "ssh-ed25519 AAAA… coolify-workshop",
+  "domainSchema": "http",
+  "domainSuffix": "-app.fjai.de",
+  "webhookBasis": "https://<oeffentliche-coolify-adresse-ohne-zugangssperre>",
+  "limitSpeicher": "512M",
+  "limitCpus": "0.5"
+}
