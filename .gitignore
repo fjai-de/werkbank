@@ -13,3 +13,6 @@ node_modules/
 __pycache__/
 .cache/
 *.swp
+
+# Pruefhistorie bleibt lokal
+10_Weitermachen/
