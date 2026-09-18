@@ -10,8 +10,8 @@
 # Der Installer bringt KEINE Zugangsdaten mit und fragt keine ab. Angemeldet wird sich danach
 # selbst: bei Claude Code mit dem eigenen Konto, bei GitHub mit dem eigenen Konto.
 set -u
-WERKBANK_REPO="https://github.com/fj-design-ai/werkbank"
-HELFER="fj70"; ORG=""; APPS=1; PROBE=0
+WERKBANK_REPO="https://github.com/fjai-de/werkbank"
+HELFER="fj70"; ORG="fjai-de"; APPS=1; PROBE=0
 while [ $# -gt 0 ]; do case "$1" in
   --ohne-apps) APPS=0;; --probe) PROBE=1;; --helfer) shift; HELFER="${1:-$HELFER}";; --org) shift; ORG="${1:-}";;
   *) echo "Unbekannte Option: $1"; exit 1;; esac; shift; done
@@ -59,9 +59,17 @@ if [ -x "$CODE" ] || hat code; then versuch "VS-Code-Erweiterung" "$CODE" --inst
 
 schritt "5/9 Werkbank-Plugin"
 QUELLE="$WERKBANK_REPO"
+# Das Repo ist privat: Zugriff hat nur, wer eingeladen ist UND bei GitHub angemeldet ist.
+if [ $PROBE = 0 ] && ! git ls-remote "$WERKBANK_REPO" >/dev/null 2>&1 && hat gh; then
+  if ! gh auth status >/dev/null 2>&1; then
+    echo "   Das Werkbank-Repo ist privat — bitte jetzt mit dem EIGENEN GitHub-Konto anmelden."
+    gh auth login --hostname github.com --git-protocol https --web || true
+  fi
+  gh auth setup-git >/dev/null 2>&1 || true
+fi
 if ! git ls-remote "$WERKBANK_REPO" >/dev/null 2>&1; then
   if [ -f "$HIER/../.claude-plugin/marketplace.json" ]; then QUELLE="$(cd "$HIER/.." && pwd)"
-    echo "${GELB}   Repo nicht erreichbar — installiere aus dem lokalen Ordner. Updates gehen erst nach Umstellung auf das Repo.${AUS}"
+    echo "${GELB}   Repo nicht erreichbar (Einladung schon angenommen?) — installiere aus dem lokalen Ordner. Umstellen spaeter: \"werkbank aktualisieren\".${AUS}"
   else echo "${ROT}   Weder Repo noch lokaler Ordner gefunden.${AUS}"; FEHLER+=("Plugin-Quelle"); fi
 fi
 echo "   Quelle: $QUELLE"

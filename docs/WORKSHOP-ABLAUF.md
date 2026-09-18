@@ -4,8 +4,9 @@ Richtwert: 20–30 Minuten je Rechner, die meiste Zeit ist Download. Alle gleich
 
 ## Vorher (Workshop-Leiter)
 
-- [ ] Repo `werkbank` liegt auf GitHub und ist ohne Anmeldung klonbar
-- [ ] Ersatzweg: Ordner `werkbank` als ZIP auf zwei USB-Sticks (WLAN im Raum ist der Engpass)
+- [ ] Repo `fjai-de/werkbank` ist gepusht (privat)
+- [ ] Ordner `werkbank` als ZIP auf zwei USB-Sticks — **der Hauptweg**, weil das Repo privat ist
+- [ ] Genug Plätze in der Organisation: `bash leiter/einladen.sh fjai-de --stand`
 - [ ] Jeder Teilnehmer hat ein **bezahltes Claude-Konto** (Pro oder Max) — vorab per Mail abfragen
 - [ ] Jeder hat sein Handy für die Zwei-Faktor-Anmeldung dabei
 - [ ] Mac: Teilnehmer kennt sein Rechner-Passwort und darf installieren · Windows: Adminrechte
@@ -15,14 +16,15 @@ Richtwert: 20–30 Minuten je Rechner, die meiste Zeit ist Download. Alle gleich
 
 1. github.com/signup — **eigene** Mailadresse, **eigenes** Passwort, im eigenen Passwortmanager gespeichert
 2. Zwei-Faktor-Anmeldung sofort einschalten (Settings → Password and authentication), Wiederherstellungscodes sichern
-3. Benutzernamen dem Workshop-Leiter nennen
+3. Benutzernamen dem Workshop-Leiter nennen → er lädt ein: `bash leiter/einladen.sh fjai-de <name> …`
+4. Einladung annehmen: github.com/orgs/fjai-de/invitation — **vor** dem Installer, sonst installiert er nur lokal
 
 **Der Workshop-Leiter kennt kein Passwort und keinen 2FA-Code.** Zugriff läuft über Repositories, nicht über Konten.
 
 ## Schritt 2 — Installer (15 min)
 
 Mac: `bash install/install.sh` · Windows: `powershell -ExecutionPolicy Bypass -File install\install.ps1`
-Mit Werkstatt-Organisation: `--org <name>` bzw. `-Org <name>` anhängen.
+Der Installer fragt die GitHub-Anmeldung selbst ab (Browser). Organisation `fjai-de` ist voreingestellt; ohne Organisation: `--org ""`.
 
 ## Schritt 3 — Anmelden (5 min, jeder selbst)
 

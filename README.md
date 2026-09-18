@@ -10,10 +10,14 @@ GitHub-Konto an.
 
 ## Installieren
 
+Dieses Repository ist **privat**. Zugriff hat, wer vom Workshop-Leiter in die Organisation eingeladen wurde,
+die Einladung angenommen hat und mit `gh auth login` angemeldet ist. Im Workshop kommt der Installer vom USB-Stick;
+er meldet dich bei GitHub an und hängt sich danach selbst ans Repo.
+
 **Mac** — Terminal öffnen:
 
 ```bash
-git clone https://github.com/fj-design-ai/werkbank ~/werkbank && bash ~/werkbank/install/install.sh
+git clone https://github.com/fjai-de/werkbank ~/werkbank && bash ~/werkbank/install/install.sh
 ```
 
 (Ohne Git: ZIP von GitHub laden, entpacken, `bash install/install.sh` im Ordner.)
@@ -21,7 +25,7 @@ git clone https://github.com/fj-design-ai/werkbank ~/werkbank && bash ~/werkbank
 **Windows 10/11** — PowerShell öffnen:
 
 ```powershell
-git clone https://github.com/fj-design-ai/werkbank $HOME\werkbank; powershell -ExecutionPolicy Bypass -File $HOME\werkbank\install\install.ps1
+git clone https://github.com/fjai-de/werkbank $HOME\werkbank; powershell -ExecutionPolicy Bypass -File $HOME\werkbank\install\install.ps1
 ```
 
 (Ohne Git: ZIP laden, entpacken, `powershell -ExecutionPolicy Bypass -File install\install.ps1`.)

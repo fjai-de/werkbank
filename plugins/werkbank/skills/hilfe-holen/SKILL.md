@@ -31,7 +31,9 @@ Wer der Helfer ist, steht in `~/.claude/werkbank/werkbank.json` unter `helfer_gi
    git -C "[PFAD]" add -A && git -C "[PFAD]" commit -m "Stand für Rückfrage" && git -C "[PFAD]" push
    ```
 
-4. **Helfer einladen** (Schreibrecht, damit er Korrekturen als Branch schicken kann):
+4. **Helfer einladen** — nur nötig, wenn das Repo im **eigenen Konto** liegt. Liegt es in der
+   Werkstatt-Organisation (`gh repo view --json owner -q .owner.login` = `github_org` aus `werkbank.json`),
+   hat der Workshop-Leiter als Eigentümer bereits Zugriff → weiter mit Schritt 5.
    ```bash
    HELFER=$(node -e "console.log(require(require('os').homedir()+'/.claude/werkbank/werkbank.json').helfer_github)")
    gh api -X PUT "repos/{owner}/{repo}/collaborators/$HELFER" -f permission=push

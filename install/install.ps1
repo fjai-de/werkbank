@@ -7,9 +7,9 @@
 #   ... -Probe               nur anzeigen, was passieren wuerde
 #
 # Der Installer bringt KEINE Zugangsdaten mit und fragt keine ab.
-param([switch]$OhneApps, [switch]$Probe, [string]$Helfer = "fj70", [string]$Org = "")
+param([switch]$OhneApps, [switch]$Probe, [string]$Helfer = "fj70", [string]$Org = "fjai-de")
 
-$WerkbankRepo = "https://github.com/fj-design-ai/werkbank"
+$WerkbankRepo = "https://github.com/fjai-de/werkbank"
 $Hier = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Fehler = New-Object System.Collections.Generic.List[string]
 
@@ -56,10 +56,17 @@ Schritt "5/9 Werkbank-Plugin"
 $Quelle = $WerkbankRepo
 if (-not $Probe) {
   git ls-remote $WerkbankRepo 2>$null | Out-Null
+  if ($LASTEXITCODE -ne 0 -and (Hat gh)) {
+    # Das Repo ist privat: Zugriff hat nur, wer eingeladen ist UND bei GitHub angemeldet ist.
+    gh auth status 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) { Write-Host "   Das Werkbank-Repo ist privat - bitte jetzt mit dem EIGENEN GitHub-Konto anmelden."; gh auth login --hostname github.com --git-protocol https --web }
+    gh auth setup-git 2>$null | Out-Null
+    git ls-remote $WerkbankRepo 2>$null | Out-Null
+  }
   if ($LASTEXITCODE -ne 0) {
     if (Test-Path "$Hier\..\.claude-plugin\marketplace.json") {
       $Quelle = (Resolve-Path "$Hier\..").Path
-      Write-Host "   Repo nicht erreichbar - installiere aus dem lokalen Ordner. Updates gehen erst nach Umstellung auf das Repo." -ForegroundColor Yellow
+      Write-Host "   Repo nicht erreichbar (Einladung schon angenommen?) - installiere aus dem lokalen Ordner. Umstellen spaeter: werkbank aktualisieren." -ForegroundColor Yellow
     } else { Write-Host "   Weder Repo noch lokaler Ordner gefunden." -ForegroundColor Red; $Fehler.Add("Plugin-Quelle") }
   }
 }

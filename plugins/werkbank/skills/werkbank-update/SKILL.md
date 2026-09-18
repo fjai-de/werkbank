@@ -16,6 +16,20 @@ claude plugin install <paket>@fj-werkbank         # Zusatzpaket nachinstallieren
 
 Danach Claude Code neu starten (oder `/reload-plugins`).
 
+## Wurde aus einem lokalen Ordner installiert (USB-Stick)?
+
+`claude plugin marketplace list` zeigt dann einen Pfad statt einer GitHub-Adresse. Einmalig umstellen —
+vorher muss die Einladung ins Werkbank-Repo angenommen und `gh auth login` erledigt sein:
+
+```bash
+gh auth setup-git
+claude plugin marketplace remove fj-werkbank
+claude plugin marketplace add <adresse-des-werkbank-repos>
+claude plugin install werkbank@fj-werkbank
+```
+
+Meldet Git „Repository not found": Die Einladung fehlt oder ist nicht angenommen (github.com/notifications).
+
 ## Pakete
 
 | Paket | Inhalt | Braucht |
