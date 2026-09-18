@@ -37,7 +37,7 @@ Der Installer lässt sich beliebig oft wiederholen. `--probe` bzw. `-Probe` zeig
 | Schritt | Inhalt |
 |---|---|
 | Werkzeuge | Git, Node, GitHub CLI, uv · VS Code, Obsidian · Claude Code + VS-Code-Erweiterung |
-| Plugin `werkbank` | 16 Skills: `start`, `weitermachen-erstellen`, `idee`, `roast`, `think`, `chain`, `check`, `feature-dev`, `projekt-analyse`, `neues-projekt`, `preview`, `caveman`, `sicherheits-check`, `freigabe-check`, `hilfe-holen`, `werkbank-update` |
+| Plugin `werkbank` | 17 Skills: `start`, `weitermachen-erstellen`, `idee`, `roast`, `think`, `chain`, `check`, `feature-dev`, `projekt-analyse`, `neues-projekt`, `preview`, `caveman`, `sicherheits-check`, `freigabe-check`, `online-stellen`, `hilfe-holen`, `werkbank-update` |
 | Hooks | feste Pfade beim Sessionstart · Übergabe bei „machen wir morgen weiter" · Stand sichern vor der Komprimierung |
 | Commit-Sperre | globaler `pre-commit`, der Zugangsdaten stoppt, bevor sie im Verlauf landen |
 | MCP-Server | Playwright (Browser), Context7 (aktuelle Doku) — beide ohne Schlüssel |

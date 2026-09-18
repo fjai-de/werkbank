@@ -22,6 +22,7 @@ Führe die Schritte **nacheinander** aus. Antworte knapp — Ergebnis, offene Pu
 | `freigabe-check` | "kann das live" | Vollprüfung vor Veröffentlichung |
 | `caveman` | "weniger tokens" | knapper Antwortmodus, spart Tokens |
 | `weitermachen-erstellen` | "session beenden" | Übergabe schreiben (mit Sicherheits-Check) |
+| `online-stellen` | "online stellen" | App baubar machen, DEPLOY.md, beim Leiter anmelden |
 | `hilfe-holen` | "ich brauche hilfe" | Stand sichern und dem Helfer Zugriff auf das Repo geben |
 | `werkbank-update` | "werkbank aktualisieren" | neue Skills nachladen |
 

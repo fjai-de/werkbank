@@ -30,6 +30,7 @@ Was auf die Teilnehmer-Rechner kommt — und was bewusst nicht.
 | `feature-dev` | ein Feature planen, bauen, dokumentieren | Bauen |
 | `neues-projekt` | Ordner, Git, `.gitignore`, privates Repo, Nulllinie | Bauen |
 | `preview` | Seite im Telefon-Viewport | Bauen |
+| `online-stellen` | App baubar machen (Port, Start, Lockdatei, Env-Namen), DEPLOY.md, beim Leiter anmelden | Bauen |
 | `sicherheits-check` | Zugangsdaten, erfundene Pakete, unsichere Muster, Header; Historie mit Rückfall-Erkennung | Sicherheit |
 | `freigabe-check` | Vollprüfung vor Veröffentlichung (TLS, Header, Pflichtangaben, Ladezeit, Barrierefreiheit, Telefon) | Sicherheit |
 | `caveman` | knapper Antwortmodus | Tokens sparen |
