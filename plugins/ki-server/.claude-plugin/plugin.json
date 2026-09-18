@@ -1,0 +1,6 @@
+{
+  "name": "ki-server",
+  "description": "Aufwendige lokale KI-Aufgaben in die Warteschlange des Werkstatt-KI-Servers stellen. Jede Person nutzt ihren eigenen Zugangscode; ohne Code bleibt das Paket stumm.",
+  "version": "0.1.0",
+  "author": { "name": "FJ Design" }
+}

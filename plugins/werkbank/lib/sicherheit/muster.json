@@ -1,0 +1,276 @@
+{
+  "_hinweis": "Suchmuster fuer den Sicherheits-Check. Ohne Code-Aenderung pflegbar. Je Muster: id, titel, regex (JavaScript, ohne Flags), schwere (kritisch|hoch|mittel|niedrig), rat.",
+  "zugangsdaten": [
+    {
+      "id": "gh-token",
+      "titel": "GitHub-Token",
+      "regex": "gh[pousr]_[A-Za-z0-9]{30,}",
+      "schwere": "kritisch",
+      "rat": "Token auf github.com/settings/tokens widerrufen, neu ausstellen, nur in Umgebungsvariablen ablegen."
+    },
+    {
+      "id": "openai-key",
+      "titel": "OpenAI-artiger Schluessel",
+      "regex": "\\bsk-[A-Za-z0-9_-]{20,}",
+      "schwere": "kritisch",
+      "entropie": true,
+      "rat": "Im Anbieter-Konto widerrufen und neu ausstellen."
+    },
+    {
+      "id": "aws-key",
+      "titel": "AWS Access Key",
+      "regex": "\\bAKIA[0-9A-Z]{16}\\b",
+      "schwere": "kritisch",
+      "rat": "In der AWS-Konsole deaktivieren und rotieren."
+    },
+    {
+      "id": "private-key",
+      "titel": "Privater Schluessel",
+      "regex": "-----BEGIN (RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----",
+      "schwere": "hoch",
+      "rat": "Schluesselpaar als kompromittiert behandeln, neu erzeugen, altes ueberall austauschen."
+    },
+    {
+      "id": "slack-token",
+      "titel": "Slack-Token",
+      "regex": "xox[baprs]-[A-Za-z0-9-]{10,}",
+      "schwere": "kritisch",
+      "rat": "Im Slack-Adminbereich widerrufen."
+    },
+    {
+      "id": "google-key",
+      "titel": "Google-API-Schluessel",
+      "regex": "\\bAIza[0-9A-Za-z_-]{35}\\b",
+      "schwere": "kritisch",
+      "rat": "In der Google Cloud Console widerrufen und eingeschraenkt neu ausstellen."
+    },
+    {
+      "id": "jwt",
+      "titel": "JSON Web Token",
+      "regex": "\\beyJ[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}",
+      "schwere": "hoch",
+      "rat": "Pruefen ob echt. Falls ja: Sitzung ungueltig machen und Signaturschluessel wechseln."
+    },
+    {
+      "id": "generisch",
+      "titel": "Zugangsdatum in einer Zuweisung",
+      "regex": "(?:api[_-]?key|apikey|auth[_-]?token|access[_-]?token|secret[_-]?key|client[_-]?secret|password|passwort|passwd)\"?'?\\s*[:=]\\s*[\"'`](\\S{16,})[\"'`]",
+      "schwere": "kritisch",
+      "gruppe": 1,
+      "entropie": true,
+      "rat": "Wert in Umgebungsvariablen verschieben und den alten widerrufen.",
+      "ci": true
+    },
+    {
+      "id": "basic-auth-url",
+      "titel": "Zugangsdaten in einer URL",
+      "regex": "https?://[A-Za-z0-9._%-]+:[^@\\s/\"'`]{8,}@",
+      "schwere": "kritisch",
+      "rat": "Zugangsdaten aus der URL entfernen und rotieren."
+    },
+    {
+      "id": "kennwort-klartext",
+      "titel": "Kennwort oder PIN im Klartext",
+      "regex": "(?:[Pp]assw(?:ö|oe|o)rt|[Kk]ennwort|\\bPIN\\b(?![\"'_A-Z]))[^\\n]{0,40}?[^\\w\\d\\-.:/](?<!Jahr )(\\d{4,10})(?![\\d\\-.:/])",
+      "schwere": "hoch",
+      "rat": "Wert als kompromittiert behandeln und aendern. Kennwoerter gehoeren nicht in Uebergabe- oder Notizdateien, sondern nur in den Geheimnisspeicher; in der Doku steht der Ort, nie der Wert. Steht der Wert bereits im Git-Verlauf, hilft Loeschen nicht mehr — nur Wechseln.",
+      "hinweis": "Musterkorrektur 03.09.2026: Jahreszahlen in Datumsangaben (09/2026) und Fliesstext (\"aus dem Jahr 2019\") sind keine Kennwoerter."
+    }
+  ],
+  "unsicher": [
+    {
+      "id": "eval",
+      "titel": "eval() auf dynamischem Inhalt",
+      "regex": "\\beval\\s*\\(",
+      "schwere": "mittel",
+      "rat": "Durch JSON.parse oder gezielte Auswertung ersetzen. eval fuehrt beliebigen Code aus."
+    },
+    {
+      "id": "new-function",
+      "titel": "new Function()",
+      "regex": "\\bnew\\s+Function\\s*\\(",
+      "schwere": "mittel",
+      "rat": "Gleiches Risiko wie eval - vermeiden."
+    },
+    {
+      "id": "innerhtml-var",
+      "titel": "innerHTML mit Variable",
+      "regex": "\\.innerHTML\\s*=\\s*(?![\"'`])(?!\\s*(?:esc|escape|escapeHtml|sanitize|sanitizeHtml|DOMPurify|purify)\\s*[.(])[A-Za-z_$]",
+      "schwere": "mittel",
+      "rat": "textContent nutzen oder Wert vor dem Einsetzen maskieren. Sonst Cross-Site-Scripting."
+    },
+    {
+      "id": "react-html",
+      "titel": "dangerouslySetInnerHTML",
+      "regex": "dangerouslySetInnerHTML",
+      "schwere": "mittel",
+      "rat": "Nur mit vorher bereinigtem Inhalt verwenden."
+    },
+    {
+      "id": "tls-aus",
+      "titel": "Zertifikatspruefung abgeschaltet",
+      "regex": "rejectUnauthorized\\s*:\\s*false|NODE_TLS_REJECT_UNAUTHORIZED\\s*=\\s*[\"']?0|verify\\s*=\\s*False",
+      "schwere": "hoch",
+      "rat": "Zertifikatspruefung wieder einschalten. Ohne sie ist die Verbindung angreifbar.",
+      "ci": true
+    },
+    {
+      "id": "cors-offen",
+      "titel": "CORS fuer alle Herkuenfte offen",
+      "regex": "Access-Control-Allow-Origin[\"']?\\s*[:,]\\s*[\"']\\*[\"']",
+      "schwere": "mittel",
+      "rat": "Auf die tatsaechlich benoetigten Herkuenfte einschraenken.",
+      "ci": true
+    },
+    {
+      "id": "schwache-hashes",
+      "titel": "Schwaches Hash-Verfahren",
+      "regex": "createHash\\s*\\(\\s*[\"'](md5|sha1)[\"']",
+      "schwere": "mittel",
+      "rat": "Fuer Passwoerter argon2 oder bcrypt, fuer Pruefsummen sha256."
+    },
+    {
+      "id": "random-token",
+      "titel": "Math.random() fuer Token",
+      "regex": "(?:token|secret|nonce|salt)[A-Za-z]*\\s*[:=][^\\n]{0,40}Math\\.random\\s*\\(",
+      "schwere": "hoch",
+      "rat": "crypto.randomUUID() oder crypto.randomBytes() verwenden. Math.random ist vorhersagbar."
+    },
+    {
+      "id": "shell-interpolation",
+      "titel": "Shell-Aufruf mit eingesetzter Variable",
+      "regex": "(?:exec|execSync)\\s*\\(\\s*`[^`]*\\$\\{",
+      "schwere": "hoch",
+      "rat": "execFile mit Argumentliste nutzen, damit nichts als Shell-Befehl interpretiert wird."
+    },
+    {
+      "id": "sql-verkettung",
+      "titel": "SQL mit eingesetztem Fragment",
+      "regex": "\\b(?:SELECT\\s+[\\w*]|INSERT\\s+INTO|UPDATE\\s+\\w+\\s+SET|DELETE\\s+FROM)\\b[^\\n;]{0,80}(?:\\+\\s*[A-Za-z_$]|\\$\\{(?![^}]*\"\\?\"))",
+      "schwere": "mittel",
+      "rat": "Pruefen, woher das eingesetzte Fragment stammt. Aus einer fest verdrahteten Liste (Spaltennamen, Sortierung) ist es unbedenklich, solange die Werte ueber Platzhalter laufen. Kommt es aus einer Anfrage, ist es SQL-Injection. Reine Platzhalterlisten wie IN (${ids.map(() => \"?\").join(\",\")}) loesen bewusst nicht mehr aus."
+    }
+  ],
+  "heikle_dateien": [
+    {
+      "id": "env-getrackt",
+      "regex": "(^|/)\\.env(?!\\.(example|sample|template|dist|vorlage)$)(\\.[A-Za-z0-9_-]+)?$",
+      "titel": "Umgebungsdatei unter Versionskontrolle",
+      "schwere": "kritisch",
+      "rat": "git rm --cached ausfuehren, in .gitignore aufnehmen, alle enthaltenen Zugangsdaten rotieren."
+    },
+    {
+      "id": "key-getrackt",
+      "regex": "(^|/)(id_rsa|id_ed25519|[^/]+\\.pem|[^/]+\\.p12|[^/]+\\.pfx|[^/]+\\.keystore)$",
+      "titel": "Schluesseldatei unter Versionskontrolle",
+      "schwere": "kritisch",
+      "rat": "Aus dem Verlauf entfernen und Schluessel neu erzeugen."
+    },
+    {
+      "id": "dump-getrackt",
+      "regex": "(^|/)[^/]+\\.(sqlite|sqlite3|db|dump)$",
+      "titel": "Datenbankdatei unter Versionskontrolle",
+      "schwere": "hoch",
+      "rat": "Pruefen ob echte Daten enthalten sind. Falls ja: entfernen und in .gitignore aufnehmen."
+    }
+  ],
+  "platzhalter": [
+    "your",
+    "dein",
+    "example",
+    "beispiel",
+    "dummy",
+    "placeholder",
+    "platzhalter",
+    "changeme",
+    "change_me",
+    "todo",
+    "xxxx",
+    "abc123",
+    "test123",
+    "insert",
+    "replace",
+    "hier",
+    "here",
+    "none",
+    "null",
+    "undefined",
+    "sample",
+    "demo",
+    "foobar",
+    "12345",
+    "0000",
+    "aaaa",
+    "bbbb",
+    "geheim",
+    "mein",
+    "<",
+    "${",
+    "{{",
+    "%s",
+    "...",
+    "***",
+    "redacted",
+    "aendern",
+    "einsetzen",
+    "zufallswert"
+  ],
+  "_hinweis_nicht_geheim": "Werte, die dieser Form entsprechen, sind keine Geheimnisse, sondern Namen. Klassiker: der Name einer Umgebungsvariablen in einer Zuweisung (const n = 'MOONSHOT_API_KEY') — sieht fuer die Entropie-Pruefung zufaellig aus, ist aber oeffentlich.",
+  "nicht_geheim": [
+    "^[A-Z][A-Z0-9]*(_[A-Z0-9]+)+$"
+  ],
+  "ignorierte_pfade": [
+    "node_modules/",
+    "dist/",
+    "build/",
+    ".next/",
+    "vendor/",
+    "coverage/",
+    ".git/",
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    "composer.lock",
+    "10_Weitermachen/sicherheit/",
+    "graphify-out/",
+    "muster.json",
+    "/plugins/",
+    "/marketplaces/",
+    "payload/plugins/",
+    "payload/projects/",
+    "/.venv/",
+    "/site-packages/",
+    "dist-server/",
+    "dist-client/",
+    "/out/",
+    "/.output/",
+    "/love-src/",
+    "/jni/",
+    "src/generated/"
+  ],
+  "binaer_endungen": [
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
+    ".avif",
+    ".ico",
+    ".pdf",
+    ".zip",
+    ".gz",
+    ".tar",
+    ".mp4",
+    ".mov",
+    ".webm",
+    ".mp3",
+    ".wav",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".otf",
+    ".eot",
+    ".psd",
+    ".ai"
+  ]
+}

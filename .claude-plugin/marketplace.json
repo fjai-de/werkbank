@@ -1,0 +1,25 @@
+{
+  "name": "fj-werkbank",
+  "owner": { "name": "FJ Design" },
+  "metadata": {
+    "description": "Die Werkbank von FJ Design fuer Claude Code — Arbeitsweise, Sicherheit und Zusatzpakete zum Nachinstallieren. Enthaelt keine Zugangsdaten."
+  },
+  "plugins": [
+    {
+      "name": "werkbank",
+      "source": "./plugins/werkbank",
+      "description": "Kernpaket: Session-Start und -Uebergabe, Ideenpruefung, Machbarkeit, Aufgabenzerlegung, Sicherheits-Check mit Commit-Sperre, Freigabepruefung, Token-Sparmodus, Hilfe aus der Ferne.",
+      "version": "1.0.0",
+      "category": "workflow",
+      "tags": ["workflow", "sicherheit", "uebergabe", "deutsch"]
+    },
+    {
+      "name": "ki-server",
+      "source": "./plugins/ki-server",
+      "description": "Zusatzpaket: aufwendige lokale KI-Aufgaben in die Warteschlange des Werkstatt-KI-Servers stellen. Braucht einen eigenen Zugangscode.",
+      "version": "0.1.0",
+      "category": "ki",
+      "tags": ["lokal", "ollama", "warteschlange"]
+    }
+  ]
+}

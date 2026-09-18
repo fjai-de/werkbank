@@ -1,0 +1,7 @@
+{
+  "name": "werkbank",
+  "description": "Die FJ-Werkbank fuer Claude Code: Session-Start und -Uebergabe, Ideenpruefung, Machbarkeit, Aufgabenzerlegung, Sicherheits-Check mit Commit-Sperre, Freigabepruefung, Token-Sparmodus, Hilfe aus der Ferne. Enthaelt keine Zugangsdaten und sendet nichts.",
+  "version": "1.0.0",
+  "author": { "name": "FJ Design" },
+  "homepage": "https://fjdesign.de"
+}

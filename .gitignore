@@ -1,0 +1,15 @@
+# Hier gehoert grundsaetzlich nichts Vertrauliches hinein — das Repo ist zum Weitergeben.
+*.env
+.env
+*.key
+*.pem
+*secret*
+credentials*
+
+.DS_Store
+Thumbs.db
+*.log
+node_modules/
+__pycache__/
+.cache/
+*.swp

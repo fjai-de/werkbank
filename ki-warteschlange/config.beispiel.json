@@ -1,0 +1,12 @@
+{
+  "port": 8790,
+  "host": "0.0.0.0",
+  "standardModell": "qwen3:8b",
+  "verdraengen": false,
+  "maxWartendProPerson": 5,
+  "zeitlimitSekunden": 1800,
+  "backends": [
+    { "name": "rtx5070ti", "url": "http://127.0.0.1:11434", "modelle": ["*"] },
+    { "name": "rtx3070",   "url": "http://127.0.0.1:11435", "modelle": ["qwen3:8b", "llama3.1:8b"] }
+  ]
+}

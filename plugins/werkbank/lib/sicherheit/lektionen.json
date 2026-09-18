@@ -1,0 +1,147 @@
+{
+  "_hinweis": "Didaktik je Befundtyp. Schluessel wird als Praefix gegen den Befundtyp geprueft, laengste Uebereinstimmung gewinnt. Fuer neue Typen einfach ergaenzen.",
+  "gh-token": {
+    "titel": "Zugangsdaten im Code",
+    "was": "Ein Schluessel, Token oder Passwort steht im Klartext in einer Datei des Projekts.",
+    "warum": "Beim Entwickeln ist der Wert zur Hand und wird kurz zum Ausprobieren eingesetzt. Danach bleibt er stehen. Sprachmodelle verstaerken das, weil sie Beispielcode mit eingesetzten Werten erzeugen — im Trainingsmaterial steht es zigtausendfach so.",
+    "vorbeugen": [
+      "Zugangsdaten ausschliesslich in Umgebungsvariablen der Plattform, nie im Repository",
+      ".env vor dem ersten Commit in die .gitignore eintragen",
+      "Beim Ausprobieren nie den echten Wert einsetzen, sondern von Anfang an ueber die Umgebungsvariable gehen",
+      "Ein Wert, der einmal im Repository stand, gilt als kompromittiert — erst widerrufen und rotieren, dann aufraeumen"
+    ]
+  },
+  "generisch": {
+    "titel": "Zugangsdaten im Code",
+    "was": "Ein Wert in einer Zuweisung wie api_key = \"...\" sieht nach einem echten Zugangsdatum aus.",
+    "warum": "Siehe oben: der Wert wird beim Ausprobieren eingesetzt und bleibt stehen.",
+    "vorbeugen": [
+      "Zugangsdaten ausschliesslich in Umgebungsvariablen",
+      "Platzhalter in Beispieldateien klar als solche kennzeichnen (your-key-here), damit sie nicht mit echten Werten verwechselt werden"
+    ]
+  },
+  "env-getrackt": {
+    "titel": "Umgebungsdatei unter Versionskontrolle",
+    "was": "Eine .env-Datei mit echten Werten wurde eingecheckt.",
+    "warum": "Die .gitignore wurde erst nach dem ersten Commit angelegt — dann ist die Datei bereits erfasst und wird weiter mitgefuehrt, obwohl der Eintrag existiert.",
+    "vorbeugen": [
+      ".gitignore als allererste Datei anlegen, vor dem ersten git add",
+      "Nur .env.example mit Platzhaltern einchecken, nie die echte .env",
+      "Nach dem Entfernen: git rm --cached reicht nicht — der Wert bleibt im Verlauf und muss rotiert werden"
+    ]
+  },
+  "private-key": {
+    "titel": "Privater Schluessel im Projektordner",
+    "was": "Ein privater SSH-Schluessel, ein VPN-Profil mit Client-Zertifikat oder eine .pem-Datei liegt im Projektordner statt an seinem Ablageort.",
+    "warum": "Schluessel werden ueber Projektordner verteilt, weil das der bequemste Transportweg ist — Cloud-Sync, Repository, geteiltes Laufwerk. Danach bleiben sie liegen. Solange alles funktioniert, faellt es niemandem auf.",
+    "vorbeugen": [
+      "Privater Schluessel gehoert nach ~/.ssh/ mit Rechten 600, der Ordner auf 700 — nie in einen Projektordner",
+      "VPN-Profile enthalten den privaten Schluessel des Client-Zertifikats und sind genauso schutzbeduerftig wie ein SSH-Schluessel",
+      "Zum Verteilen den oeffentlichen Schluessel nehmen; der private verlaesst das Geraet nicht, auf dem er erzeugt wurde",
+      "Muss ein Schluessel doch transportiert werden: nach dem Einrichten am Ziel loeschen UND austauschen — er war unterwegs",
+      "*.pem, *.p12, id_rsa, id_ed25519 gehoeren in jede .gitignore, bevor der erste Commit faellt"
+    ]
+  },
+  "verlauf-": {
+    "titel": "Zugangsdaten im Git-Verlauf",
+    "was": "Ein Zugangsdatum wurde eingecheckt und steht dauerhaft im Verlauf, auch wenn die Datei inzwischen bereinigt ist.",
+    "warum": "Loeschen entfernt den Wert aus dem Arbeitsstand, nicht aus der Historie. Wer das Repository klont, bekommt den Verlauf mit.",
+    "vorbeugen": [
+      "Vor jedem Push pruefen, was tatsaechlich im Diff steht",
+      "Bei einem Fund: zuerst widerrufen und rotieren. Das Umschreiben des Verlaufs ist zweitrangig und aendert nichts daran, dass der Wert bereits draussen war",
+      "Repositories mit Verlaufsbefunden nie oeffentlich stellen"
+    ]
+  },
+  "paket-existiert-nicht": {
+    "titel": "Erfundene Abhaengigkeit",
+    "was": "In package.json steht ein Paket, das es in der Registry nicht gibt.",
+    "warum": "Sprachmodelle erfinden Paketnamen, die plausibel klingen. In einer Untersuchung (USENIX Security 2025) waren 19,7 Prozent der vorgeschlagenen Pakete frei erfunden. Angreifer registrieren diese Namen gezielt — Slopsquatting.",
+    "vorbeugen": [
+      "Jede neue Abhaengigkeit vor der Aufnahme in der Registry nachschlagen: gibt es sie, wie alt, wie verbreitet, wer steht dahinter",
+      "Keine Bibliothek uebernehmen, nur weil ein Vorschlag sie nennt",
+      "So wenige Abhaengigkeiten wie moeglich — was nicht da ist, kann nicht kompromittiert werden",
+      "Lockfile einchecken, damit Versionen festliegen"
+    ]
+  },
+  "paket-verdaechtig": {
+    "titel": "Neue Abhaengigkeit mit wenig Verbreitung",
+    "was": "Ein neu aufgenommenes Paket ist sehr jung und hat kaum Downloads.",
+    "warum": "Typisches Muster fuer untergeschobene Pakete mit aehnlich klingendem Namen.",
+    "vorbeugen": [
+      "Bei jungen Paketen den Namen Zeichen fuer Zeichen mit der offiziellen Dokumentation vergleichen",
+      "Repository und Herausgeber pruefen, bevor das Paket in den Build kommt"
+    ]
+  },
+  "header": {
+    "titel": "Fehlende Sicherheits-Header",
+    "was": "Die ausgelieferte Seite setzt keine oder zu wenige Sicherheits-Header.",
+    "warum": "Header sind Server-Konfiguration und gehoeren zu keiner Datei im Projekt. Sie werden beim Aufsetzen schlicht vergessen, weil ohne sie alles funktioniert.",
+    "vorbeugen": [
+      "Beim Aufsetzen jedes neuen Hosts die fuenf Header direkt mitsetzen: Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Content-Security-Policy",
+      "Bei nginx: add_header in einem location-Block verwirft geerbte Header — die Header muessen in JEDEM Block wiederholt werden, in dem add_header vorkommt",
+      "Nach jedem Deploy einmal curl -sI auf die Live-URL"
+    ]
+  },
+  "gitignore": {
+    "titel": "Fehlende oder unvollstaendige .gitignore",
+    "was": "Es gibt keine .gitignore, oder .env fehlt darin.",
+    "warum": "Sie wird nachtraeglich angelegt, wenn das erste Mal etwas Falsches im Diff auftaucht — dann ist es zu spaet.",
+    "vorbeugen": [
+      "Bei jedem neuen Projekt zuerst die .gitignore anlegen: .env, node_modules/, *.pem, id_rsa",
+      "Erst danach git init und der erste Commit"
+    ]
+  },
+  "lockfile": {
+    "titel": "Fehlende Lockdatei",
+    "was": "Abhaengigkeiten sind deklariert, aber die Versionen nicht festgelegt.",
+    "warum": "npm install ohne eingecheckte Lockdatei zieht bei jedem Build andere Unterversionen — auch kompromittierte.",
+    "vorbeugen": [
+      "package-lock.json immer einchecken",
+      "In der Auslieferung npm ci statt npm install verwenden"
+    ]
+  },
+  "eval": {
+    "titel": "Code-Ausfuehrung aus Daten",
+    "was": "eval() oder new Function() fuehrt Inhalt als Programmcode aus.",
+    "warum": "Wirkt als schnelle Loesung fuer dynamische Auswertung. Sobald der Inhalt von aussen kommt, ist es eine offene Tuer.",
+    "vorbeugen": [
+      "JSON.parse fuer Daten",
+      "Fuer Ausdruecke eine bewusste, enge Auswertung schreiben statt beliebigen Code auszufuehren"
+    ]
+  },
+  "innerhtml-var": {
+    "titel": "HTML aus Variablen zusammensetzen",
+    "was": "innerHTML wird mit einer Variablen befuellt.",
+    "warum": "Bequemer als Elemente einzeln zu bauen. Enthaelt die Variable Nutzereingaben, laesst sich Code einschleusen.",
+    "vorbeugen": [
+      "textContent nutzen, wo nur Text gebraucht wird",
+      "Wenn HTML noetig ist: alle eingesetzten Werte vorher maskieren und das an einer einzigen Stelle im Code tun"
+    ]
+  },
+  "tls-aus": {
+    "titel": "Zertifikatspruefung abgeschaltet",
+    "was": "Die Pruefung des TLS-Zertifikats wurde deaktiviert.",
+    "warum": "Wird beim Debuggen gesetzt, um eine Fehlermeldung loszuwerden, und bleibt dann stehen.",
+    "vorbeugen": [
+      "Zertifikatsprobleme an der Wurzel loesen, nie die Pruefung abschalten",
+      "Beim Aufraeumen gezielt nach rejectUnauthorized und --insecure suchen"
+    ]
+  },
+  "audit-": {
+    "titel": "Bekannte Schwachstellen in Abhaengigkeiten",
+    "was": "npm audit meldet Schwachstellen in verwendeten Paketen.",
+    "warum": "Abhaengigkeiten altern still. Ohne festen Termin schaut niemand nach.",
+    "vorbeugen": [
+      "Feste Frist fuers Nachziehen vereinbaren",
+      "Automatische Schwachstellenmeldung im Repository aktivieren"
+    ]
+  },
+  "_standard": {
+    "titel": "Sicherheitsbefund",
+    "was": "Siehe Befundtext.",
+    "warum": "Noch nicht eingeordnet.",
+    "vorbeugen": [
+      "Diese Lektion beim naechsten Vorfall ausformulieren"
+    ]
+  }
+}

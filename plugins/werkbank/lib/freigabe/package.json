@@ -1,0 +1,7 @@
+{
+  "name": "freigabe-check",
+  "private": true,
+  "type": "module",
+  "description": "Freigabepruefung vor Veroeffentlichung — FJ Design",
+  "dependencies": { "playwright": "^1.49.0", "axe-core": "^4.10.0" }
+}

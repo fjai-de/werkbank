@@ -1,0 +1,28 @@
+#!/bin/sh
+# Werkbank — globale Commit-Sperre gegen Zugangsdaten.
+# Eingerichtet über: git config --global core.hooksPath ~/.claude/git-hooks
+#
+# Ein globaler hooksPath verdeckt Hooks im Repository. Deshalb wird ein
+# vorhandener lokaler pre-commit hier ausdrücklich mit ausgeführt.
+
+# Node finden, auch wenn der Aufruf aus einer GUI ohne volle PATH kommt.
+NODE="$(command -v node 2>/dev/null)"
+[ -z "$NODE" ] && [ -x /opt/homebrew/bin/node ] && NODE=/opt/homebrew/bin/node
+[ -z "$NODE" ] && [ -x /usr/local/bin/node ] && NODE=/usr/local/bin/node
+
+PRUEFER="$HOME/.claude/werkbank/sicherheit/vor-commit.mjs"
+
+if [ -n "$NODE" ] && [ -f "$PRUEFER" ]; then
+  "$NODE" "$PRUEFER" || exit 1
+fi
+
+# Lokalen Hook des Repositories nicht verschlucken.
+# Achtung: --git-path folgt core.hooksPath und zeigt dann auf DIESE Datei.
+# Deshalb das Git-Verzeichnis direkt aufloesen.
+GITDIR="$(git rev-parse --absolute-git-dir 2>/dev/null)"
+LOKAL="$GITDIR/hooks/pre-commit"
+if [ -n "$LOKAL" ] && [ -x "$LOKAL" ] && [ "$LOKAL" != "$0" ]; then
+  "$LOKAL" "$@" || exit $?
+fi
+
+exit 0

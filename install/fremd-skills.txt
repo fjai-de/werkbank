@@ -1,0 +1,18 @@
+# Fremde Skills, die der Installer direkt von der Originalquelle holt (nichts davon liegt in diesem Repo).
+# Format: <github-quelle> <skill-name|*>      — Zeilen mit # werden uebersprungen.
+# Sicherheit zuerst
+useai-pro/openclaw-skills-security skill-vetter
+vercel-labs/skills find-skills
+# Obsidian und Web-Inhalte (spart Tokens gegenueber rohem HTML)
+kepano/obsidian-skills obsidian-markdown
+kepano/obsidian-skills obsidian-bases
+kepano/obsidian-skills defuddle
+# Dokumente
+anthropics/skills pdf
+anthropics/skills xlsx
+anthropics/skills pptx
+anthropics/skills webapp-testing
+# Design und Web
+pbakaus/impeccable *
+vercel-labs/agent-skills web-design-guidelines
+microsoft/playwright-cli *
