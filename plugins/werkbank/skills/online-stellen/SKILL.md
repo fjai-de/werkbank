@@ -68,7 +68,8 @@ git add -A && git commit -m "Bereit zum Veröffentlichen" && git push
 
 ## 5 — Veröffentlichen
 
-`WS` steht für: `node "${CLAUDE_PLUGIN_ROOT}/skills/online-stellen/werkstatt.mjs"`
+`WS` steht für: `node "$HOME/.claude/werkbank/werkstatt.mjs"` (Windows PowerShell: `node $HOME\.claude\werkbank\werkstatt.mjs`).
+Fehlt die Datei: `node "${CLAUDE_PLUGIN_ROOT}/skills/online-stellen/werkstatt.mjs"` nehmen — sie wird beim nächsten Sessionstart angelegt.
 
 **Einmalig verbinden.** Adresse und Zugangscode gibt der Workshop-Leiter. Den Code tippt der User **selbst** ins Terminal —
 nie im Chat nennen lassen, nie in eine Datei im Projekt schreiben:

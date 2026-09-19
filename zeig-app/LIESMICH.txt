@@ -1,0 +1,14 @@
+App zeigen — so geht's
+
+1. Diese drei Dateien in deinen Projektordner legen (dorthin, wo package.json oder index.html liegt).
+2. Starten:
+   Windows:  Doppelklick auf  App-zeigen-Windows.cmd
+   Mac:      Doppelklick auf  App-zeigen-Mac.command
+             (kommt "nicht verifizierter Entwickler": Rechtsklick > Öffnen)
+   oder im Terminal im Projektordner:   node zeig-app.mjs
+3. Den angezeigten Link an Friedrich schicken. Er liegt schon in der Zwischenablage.
+
+Das Fenster offen lassen, solange Friedrich schaut. Schließen = Link tot.
+Jeder mit dem Link sieht die App — keine echten Kundendaten oder Passwörter zeigen.
+
+Läuft deine App schon auf einem bestimmten Port:   node zeig-app.mjs 3000

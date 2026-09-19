@@ -6,6 +6,7 @@
 //
 //   ~/.claude/werkbank/session.mjs      Session-Tracker
 //   ~/.claude/werkbank/sicherheit/      Sicherheits-Check + Commit-Pruefer
+//   ~/.claude/werkbank/werkstatt.mjs    Veroeffentlichen ueber den Leitstand
 //   ~/.claude/werkbank/freigabe/        Freigabepruefung (node_modules bleiben erhalten)
 //   ~/.claude/werkbank/.session-start   Zeitmarke fuer "seit Sessionbeginn geaendert"
 //
@@ -35,6 +36,8 @@ try {
   if (fs.existsSync(tracker)) fs.copyFileSync(tracker, path.join(ziel, "session.mjs"));
   kopiere(path.join(wurzel, "lib", "sicherheit"), path.join(ziel, "sicherheit"));
   kopiere(path.join(wurzel, "lib", "freigabe"), path.join(ziel, "freigabe"));
+  const ws = path.join(wurzel, "skills", "online-stellen", "werkstatt.mjs");      // fester Pfad, damit man ihn im Terminal tippen kann
+  if (fs.existsSync(ws)) fs.copyFileSync(ws, path.join(ziel, "werkstatt.mjs"));
   fs.writeFileSync(path.join(ziel, ".session-start"), new Date().toISOString());
 } catch { /* bewusst still */ }
 process.exit(0);
