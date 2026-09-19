@@ -1,6 +1,6 @@
 ---
 name: 'online-stellen'
-description: 'Macht eine App bereit für die Veröffentlichung auf dem Werkstatt-Server und meldet sie beim Workshop-Leiter an. Prüft Start-Befehl, Port, Umgebungsvariablen und Sicherheit, schreibt DEPLOY.md und pusht. Trigger; "online stellen", "app veröffentlichen", "live stellen", "deploy", "kann das online".'
+description: 'Veröffentlicht eine App auf dem Werkstatt-Server unter einer echten Adresse (<name>-app.fjai.de). Prüft Start-Befehl, Port, Umgebungsvariablen und Sicherheit, schreibt DEPLOY.md, pusht und meldet die App über das Werkzeug werkstatt.mjs an. Trigger; "online stellen", "app veröffentlichen", "live stellen", "deploy", "kann das online".'
 ---
 
 # Online stellen
@@ -54,7 +54,6 @@ Exit-Code 2 → nicht veröffentlichen, erst beheben.
 
 ```markdown
 # Deploy
-- Repository: <org>/<repo> · Branch: main
 - Art: Node (Nixpacks) | statisch | Dockerfile
 - Build: npm run build      Start: npm start      Port: 3000
 - Umgebungsvariablen: NAME_A, NAME_B   (Werte kommen getrennt)
@@ -67,13 +66,34 @@ Exit-Code 2 → nicht veröffentlichen, erst beheben.
 git add -A && git commit -m "Bereit zum Veröffentlichen" && git push
 ```
 
-## 5 — Anmelden
+## 5 — Veröffentlichen
 
-Dem User sagen: „Sag dem Workshop-Leiter Bescheid — `DEPLOY.md` liegt im Repo." Link mit
-`gh repo view --json url -q .url` nennen. Nach der Einrichtung gilt: **jeder Push auf `main` geht online.**
-Halbfertiges deshalb auf einem eigenen Branch bauen (`git switch -c entwurf`) und erst zusammenführen, wenn es läuft.
+`WS` steht für: `node "${CLAUDE_PLUGIN_ROOT}/skills/online-stellen/werkstatt.mjs"`
+
+**Einmalig verbinden.** Adresse und Zugangscode gibt der Workshop-Leiter. Den Code tippt der User **selbst** ins Terminal —
+nie im Chat nennen lassen, nie in eine Datei im Projekt schreiben:
+
+```bash
+WS einrichten http://<adresse-vom-leiter>
+```
+
+**Veröffentlichen** (im Projektordner):
+
+```bash
+WS veroeffentlichen            # liest DEPLOY.md; --name, --port, --art überschreiben
+```
+
+Das Werkzeug trägt den Leseschlüssel des Servers ins eigene Repo ein (nur lesen), lädt den Workshop-Leiter als
+Mitarbeiter ein, meldet die App an und wartet auf den Bau. Am Ende steht die Adresse: `https://<name>-app.fjai.de`.
+Übertragen werden nur Repo-Name, Wunschname, Port, Bauart und die **Namen** der Umgebungsvariablen — keine Werte, keine Tokens.
+
+- Exit-Code 3 → noch nicht verbunden: dem User den Einrichten-Befehl nennen.
+- „Umgebungsvariablen fehlen noch" → Werte dem Leiter direkt geben, er trägt sie ein und baut.
+- Danach gilt: **jeder Push auf `main` geht innerhalb von ein bis zwei Minuten online.** Halbfertiges auf einem eigenen
+  Branch bauen (`git switch -c entwurf`). Sofort neu bauen: `WS veroeffentlichen` noch einmal. Stand: `WS status`.
+- Höchstens fünf Apps je Person.
 
 ## Wenn der Bau auf dem Server scheitert
 
-Der Workshop-Leiter schickt die Fehlermeldung. Häufigste Ursachen: fehlende Lockdatei, `localhost` statt `0.0.0.0`,
+Der Workshop-Leiter sieht das Bau-Protokoll. Häufigste Ursachen: fehlende Lockdatei, `localhost` statt `0.0.0.0`,
 fester Port, fehlende Umgebungsvariable, Paket nur in `devDependencies`, das zur Laufzeit gebraucht wird.
