@@ -82,9 +82,9 @@ if (args[0] === "einrichten") {
     const antwort = await ruf("POST", "/api/veroeffentlichen", {
       repo, branch: zweig, name: opt("name") || feld("Wunschname"),
       buildPack: art.includes("docker") ? "dockerfile" : art.includes("stat") ? "static" : "nixpacks",
-      port: opt("port") || (/port\s*:\s*(\d{2,5})/i.exec(d) || [])[1],
+      port: opt("port") || (/port\s*:\s*`?(\d{2,5})/i.exec(d) || [])[1],
       gesund: (/(\/[\w\-\/]*)/.exec(feld("Lebenszeichen")) || [])[1],
-      envNamen: feld("Umgebungsvariablen").split(/[,\s]+/).filter(n => /^[A-Z][A-Z0-9_]+$/.test(n)),
+      envNamen: feld("Umgebungsvariablen").replace(/\([^)]*\)/g, " ").split(/[,;\s`*]+/).filter(n => /^[A-Z][A-Z0-9_]+$/.test(n) && !["HOST", "PORT", "NODE_ENV"].includes(n)),
     });
     console.error("Angemeldet: " + antwort.url + (antwort.hinweis ? "\n" + antwort.hinweis : ""));
     if (!antwort.hinweis) {
