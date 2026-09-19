@@ -5,15 +5,16 @@
 #   bash install.sh --ohne-apps           VS Code / Obsidian nicht installieren
 #   bash install.sh --helfer <github>     GitHub-Name des Helfers (Standard: fj70)
 #   bash install.sh --org <name>          Werkstatt-Organisation auf GitHub (optional)
+#   bash install.sh --nur-laden         alle Mac-Programme nur nach install/pakete-mac laden (fuer den Stick)
 #   bash install.sh --probe               nur anzeigen, was passieren wuerde
 #
 # Der Installer bringt KEINE Zugangsdaten mit und fragt keine ab. Angemeldet wird sich danach
 # selbst: bei Claude Code mit dem eigenen Konto, bei GitHub mit dem eigenen Konto.
 set -u
 WERKBANK_REPO="https://github.com/fjai-de/werkbank"
-HELFER="fj70"; ORG="fjai-de"; APPS=1; PROBE=0
+HELFER="fj70"; ORG="fjai-de"; APPS=1; PROBE=0; NURLADEN=0
 while [ $# -gt 0 ]; do case "$1" in
-  --ohne-apps) APPS=0;; --probe) PROBE=1;; --helfer) shift; HELFER="${1:-$HELFER}";; --org) shift; ORG="${1:-}";;
+  --ohne-apps) APPS=0;; --probe) PROBE=1;; --nur-laden) NURLADEN=1;; --helfer) shift; HELFER="${1:-$HELFER}";; --org) shift; ORG="${1:-}";;
   *) echo "Unbekannte Option: $1"; exit 1;; esac; shift; done
 
 HIER="$(cd "$(dirname "$0")" && pwd)"
@@ -27,34 +28,104 @@ hat() { command -v "$1" >/dev/null 2>&1; }
 
 [ "$(uname)" = "Darwin" ] || { echo "Dieses Skript ist fuer macOS. Windows: install.ps1"; exit 1; }
 
-schritt "1/9 Homebrew"
-if ! hat brew; then
-  [ -x /opt/homebrew/bin/brew ] && eval "$(/opt/homebrew/bin/brew shellenv)"
-  [ -x /usr/local/bin/brew ] && eval "$(/usr/local/bin/brew shellenv)"
+# ---------- Programme: erst install/pakete-mac (Stick), sonst direkt vom Hersteller. Kein Homebrew, kein sudo. ----------
+# Laeuft damit auch auf aelteren Intel-Macs, auf denen Homebrew alles aus dem Quelltext bauen wuerde.
+PAK="$HIER/pakete-mac"; BIN="$HOME/.local/bin"; ZW="${TMPDIR:-/tmp}/werkbank-pakete"
+ARCH="$(uname -m)"; [ "$ARCH" = "arm64" ] || ARCH="x86_64"
+OSV="$(sw_vers -productVersion)"; OSMAJ="${OSV%%.*}"; OSREST="${OSV#*.}"; OSMIN="${OSREST%%.*}"
+UA="werkbank-installer"
+
+gh_datei() { # <repo> <regex> -> URL des juengsten Releases MIT passender Datei
+  curl -fsSL -A "$UA" "https://api.github.com/repos/$1/releases?per_page=10" 2>/dev/null | grep -o '"browser_download_url": *"[^"]*"' | cut -d'"' -f4 | grep -E "$2" | head -1; }
+node_version() { # <arm64|x86_64> <os-major> <os-minor> -> passende Node-Version fuer dieses macOS
+  local filter='$10!="-"'                                   # juengste LTS
+  if [ "$2" -lt 11 ]; then filter='$1 ~ /^v20\./'           # macOS 10.15: hoechstens Node 20
+  elif [ "$2" -lt 13 ] || { [ "$2" -eq 13 ] && [ "$3" -lt 5 ]; }; then filter='$1 ~ /^v22\./'; fi   # macOS 11–13.4: Node 22
+  curl -fsSL "https://nodejs.org/dist/index.tab" 2>/dev/null | awk -F'\t' "NR>1 && $filter {print \$1; exit}"; }
+node_url() { local a=x64; [ "$1" = "arm64" ] && a=arm64; echo "https://nodejs.org/dist/$2/node-$2-darwin-$a.tar.gz"; }
+paket_url() { # <name> <arch> -> URL
+  local a64=amd64 ax=x86_64; [ "$2" = "arm64" ] && a64=arm64 && ax=aarch64
+  case "$1" in
+    gh)          gh_datei cli/cli "_macOS_${a64}\.zip$";;
+    uv)          gh_datei astral-sh/uv "/uv-${ax}-apple-darwin\.tar\.gz$";;
+    cloudflared) gh_datei cloudflare/cloudflared "/cloudflared-darwin-${a64}\.tgz$";;
+    vscode)      echo "https://update.code.visualstudio.com/latest/darwin-universal/stable";;
+    obsidian)    gh_datei obsidianmd/obsidian-releases "/Obsidian-[0-9.]+\.dmg$";;
+  esac; }
+paket_name() { case "$1" in vscode) echo "VSCode-darwin-universal.zip";; *) basename "$2";; esac; }
+hole() { # <url> <dateiname> -> Pfad (aus pakete-mac oder frisch geladen)
+  if [ -f "$PAK/$2" ]; then echo "$PAK/$2"; return 0; fi
+  mkdir -p "$ZW"; echo "   lade $2 ..." >&2
+  curl -fSL --retry 2 -A "$UA" -o "$ZW/$2" "$1" 2>/dev/null && [ "$(wc -c < "$ZW/$2")" -gt 1000000 ] && echo "$ZW/$2"; }
+aus_archiv() { # <archiv> <programmname> -> legt das Programm nach ~/.local/bin
+  local t; t="$(mktemp -d)"; case "$1" in *.zip) ditto -xk "$1" "$t";; *) tar -xzf "$1" -C "$t";; esac
+  local f; f="$(find "$t" -type f -name "$2" | head -1)"; [ -n "$f" ] || return 1
+  mkdir -p "$BIN"; cp "$f" "$BIN/$2"; chmod +x "$BIN/$2"
+  [ "$2" = "uv" ] && { f="$(find "$t" -type f -name uvx | head -1)"; [ -n "$f" ] && cp "$f" "$BIN/uvx" && chmod +x "$BIN/uvx"; }
+  rm -rf "$t"; }
+
+if [ $NURLADEN = 1 ]; then
+  schritt "Lade alle Mac-Programme nach $PAK (Intel + Apple Silicon)"
+  mkdir -p "$PAK"; cd "$PAK"
+  lade1() { [ -n "$1" ] || { echo "${GELB}   ! keine Adresse fuer $2${AUS}"; FEHLER+=("$2"); return; }
+    [ -f "$2" ] && { echo "   $2 vorhanden"; return; }; echo "   lade $2 ..."; curl -fSL --retry 2 -A "$UA" -o "$2" "$1" 2>/dev/null || { rm -f "$2"; FEHLER+=("$2"); }; }
+  for A in x86_64 arm64; do
+    for N in gh uv cloudflared; do U="$(paket_url $N $A)"; lade1 "$U" "$(paket_name $N "$U")"; done
+    V="$(node_version $A 99 0)"; lade1 "$(node_url $A "$V")" "$(basename "$(node_url $A "$V")")"
+  done
+  for OS in "12 0" "10 15"; do V="$(node_version x86_64 $OS)"; lade1 "$(node_url x86_64 "$V")" "$(basename "$(node_url x86_64 "$V")")"; done   # aeltere Intel-Macs
+  for N in vscode obsidian; do U="$(paket_url $N x)"; lade1 "$U" "$(paket_name $N "$U")"; done
+  ls -lh "$PAK" | awk 'NR>1{print "   "$5"\t"$9}'
+  [ ${#FEHLER[@]} -gt 0 ] && { echo "${GELB}Nicht geladen: ${FEHLER[*]}${AUS}"; exit 1; }
+  echo "${GRUEN}Alles da.${AUS}"; exit 0
 fi
-if ! hat brew; then
-  echo "   Homebrew fehlt — wird installiert (fragt nach dem Mac-Passwort)."
-  tu /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  [ -x /opt/homebrew/bin/brew ] && eval "$(/opt/homebrew/bin/brew shellenv)"
-  [ -x /usr/local/bin/brew ] && eval "$(/usr/local/bin/brew shellenv)"
-  if [ $PROBE = 0 ] && ! grep -q 'brew shellenv' "$HOME/.zprofile" 2>/dev/null; then
-    echo 'eval "$('"$(command -v brew)"' shellenv)"' >> "$HOME/.zprofile"; fi
-else echo "   vorhanden"; fi
+
+schritt "1/9 Rechner: macOS $OSV, $ARCH"
+[ "$OSMAJ" -lt 11 ] && echo "${GELB}   Aelteres macOS: aktuelles VS Code braucht macOS 11, Claude Code laeuft hier evtl. nur ueber npm. Es wird versucht.${AUS}"
+mkdir -p "$BIN"; export PATH="$BIN:$HOME/.local/node/bin:$PATH"
+if [ $PROBE = 0 ]; then for RC in "$HOME/.zprofile" "$HOME/.bash_profile"; do
+  grep -q 'werkbank-pfad' "$RC" 2>/dev/null || printf '\n# werkbank-pfad\nexport PATH="$HOME/.local/bin:$HOME/.local/node/bin:$PATH"\n' >> "$RC"; done; fi
 
 schritt "2/9 Grundwerkzeuge: git, node, gh, uv, cloudflared"
-for p in git node gh uv cloudflared; do hat "$p" && echo "   $p vorhanden" || versuch "brew install $p" brew install "$p"; done
+if xcode-select -p >/dev/null 2>&1 && hat git; then echo "   git vorhanden"
+elif [ $PROBE = 1 ]; then echo "   [probe] Apple-Entwicklerwerkzeuge (git)"
+else
+  echo "   git fehlt — Apple fragt gleich in einem Fenster: dort 'Installieren' klicken. Das dauert einige Minuten."
+  xcode-select --install >/dev/null 2>&1 || true
+  W=0; until xcode-select -p >/dev/null 2>&1 && /usr/bin/git --version >/dev/null 2>&1; do sleep 10; W=$((W+10)); [ $((W % 60)) = 0 ] && echo "   … warte auf die Apple-Werkzeuge (${W}s)"; [ $W -ge 3600 ] && { FEHLER+=("git (Apple-Werkzeuge)"); break; }; done
+fi
+if hat node; then echo "   node vorhanden"
+else V="$(node_version $ARCH $OSMAJ $OSMIN)"; U="$(node_url $ARCH "$V")"
+  if [ $PROBE = 1 ]; then echo "   [probe] node $V"; else
+    D="$(hole "$U" "$(basename "$U")")" && { rm -rf "$HOME/.local/node"; mkdir -p "$HOME/.local/node"; tar -xzf "$D" -C "$HOME/.local/node" --strip-components 1; }
+    hat node && echo "   node $V installiert" || { echo "${GELB}   ! node fehlgeschlagen${AUS}"; FEHLER+=("node"); }; fi
+fi
+for N in gh uv cloudflared; do
+  if hat $N; then echo "   $N vorhanden"; continue; fi
+  if [ $PROBE = 1 ]; then echo "   [probe] $N"; continue; fi
+  U="$(paket_url $N $ARCH)"; D="$(hole "$U" "$(paket_name $N "$U")")" && aus_archiv "$D" $N && echo "   $N installiert" || { echo "${GELB}   ! $N fehlgeschlagen${AUS}"; FEHLER+=("$N"); }
+done
 
 schritt "3/9 Programme: VS Code, Obsidian"
-if [ $APPS = 1 ]; then
-  [ -d "/Applications/Visual Studio Code.app" ] && echo "   VS Code vorhanden" || versuch "VS Code" brew install --cask visual-studio-code
-  [ -d "/Applications/Obsidian.app" ] && echo "   Obsidian vorhanden" || versuch "Obsidian" brew install --cask obsidian
-else echo "   uebersprungen"; fi
+APPZIEL="/Applications"; [ -w "$APPZIEL" ] || { APPZIEL="$HOME/Applications"; mkdir -p "$APPZIEL"; }
+if [ $APPS = 0 ]; then echo "   uebersprungen"; else
+  if [ -d "/Applications/Visual Studio Code.app" ] || [ -d "$HOME/Applications/Visual Studio Code.app" ]; then echo "   VS Code vorhanden"
+  elif [ $PROBE = 1 ]; then echo "   [probe] VS Code"
+  else U="$(paket_url vscode x)"; D="$(hole "$U" "$(paket_name vscode "$U")")" && ditto -xk "$D" "$APPZIEL" && echo "   VS Code installiert" || { echo "${GELB}   ! VS Code fehlgeschlagen${AUS}"; FEHLER+=("VS Code"); }; fi
+  if [ -d "/Applications/Obsidian.app" ] || [ -d "$HOME/Applications/Obsidian.app" ]; then echo "   Obsidian vorhanden"
+  elif [ $PROBE = 1 ]; then echo "   [probe] Obsidian"
+  else U="$(paket_url obsidian x)"; D="$(hole "$U" "$(paket_name obsidian "$U")")" && {
+      M="$(hdiutil attach -nobrowse -readonly "$D" | awk -F'\t' '/\/Volumes\//{print $NF; exit}')"
+      [ -n "$M" ] && cp -R "$M/Obsidian.app" "$APPZIEL/" && echo "   Obsidian installiert"; [ -n "$M" ] && hdiutil detach "$M" -quiet; } || { echo "${GELB}   ! Obsidian fehlgeschlagen${AUS}"; FEHLER+=("Obsidian"); }; fi
+fi
 
 schritt "4/9 Claude Code"
 export PATH="$HOME/.local/bin:$PATH"
 if hat claude; then echo "   vorhanden ($(claude --version 2>/dev/null | head -1))"
-else versuch "Claude Code" /bin/bash -c "curl -fsSL https://claude.ai/install.sh | bash"; fi
-CODE="/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"; hat code && CODE="code"
+else versuch "Claude Code" /bin/bash -c "curl -fsSL https://claude.ai/install.sh | bash"
+  hat claude || { echo "   Rueckfall: Installation ueber npm"; FEHLER=("${FEHLER[@]/Claude Code}"); versuch "Claude Code (npm)" npm install -g @anthropic-ai/claude-code; }
+fi
+CODE="/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"; [ -x "$CODE" ] || CODE="$HOME/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"; hat code && CODE="code"
 if [ -x "$CODE" ] || hat code; then versuch "VS-Code-Erweiterung" "$CODE" --install-extension anthropic.claude-code --force >/dev/null; fi
 
 schritt "4b Anmelden — jeweils mit dem EIGENEN Konto, der Browser öffnet sich von selbst"
@@ -148,6 +219,6 @@ echo; echo "${GRUEN}Fertig.${AUS}"
 [ ${#FEHLER[@]} -gt 0 ] && { echo "${GELB}Nicht geklappt:${AUS}"; printf '   - %s\n' "${FEHLER[@]}"; }
 if [ $PROBE = 0 ]; then
   mkdir -p "$HOME/Projekte"
-  if [ -d "/Applications/Visual Studio Code.app" ]; then open -a "Visual Studio Code" "$HOME/Projekte"; fi
+  open -a "Visual Studio Code" "$HOME/Projekte" 2>/dev/null || true
 fi
 echo; echo "${GRUEN}VS Code ist offen. Links das Claude-Symbol anklicken und 'start' schreiben.${AUS}"
