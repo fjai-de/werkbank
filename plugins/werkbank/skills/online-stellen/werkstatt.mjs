@@ -38,9 +38,21 @@ if (args[0] === "einrichten") {
   const ruf = async (m, p, b) => { const r = await fetch(z.url + p, { method: m, headers: { authorization: "Bearer " + z.code, "content-type": "application/json" }, body: b ? JSON.stringify(b) : undefined }).catch(() => null);
     if (!r) { console.error("Leitstand nicht erreichbar: " + z.url); process.exit(1); } const j = await r.json().catch(() => ({})); if (!r.ok) await ende("Abgelehnt: " + (j.fehler || r.status)); return j; };
 
-  const herkunft = lauf("git", ["remote", "get-url", "origin"]); const m = /github\.com[:/]([^/]+)\/([^/]+?)(\.git)?$/.exec(herkunft || "");
   schritt = "repository finden";
-  if (!m) await ende("Dieser Ordner hat kein GitHub-Repository (git remote origin fehlt). Erst: gh repo create <name> --private --source . --push");
+  let herkunft = lauf("git", ["remote", "get-url", "origin"]);
+  if (!herkunft && args[0] === "veroeffentlichen") {
+    // Noch kein GitHub-Repo: selbst ein PRIVATES anlegen, statt den Lauf abzubrechen
+    if (lauf("git", ["rev-parse", "--is-inside-work-tree"]) !== "true") await ende("Dieser Ordner ist kein Git-Projekt. Ist der richtige Ordner offen (der mit package.json oder index.html)? Dann: git init -b main, committen, nochmal.");
+    if (lauf("git", ["rev-parse", "HEAD"]) === null) await ende("Es gibt noch keinen Commit. Erst committen (git add -A && git commit -m \"Start\"), dann nochmal.");
+    if (lauf("gh", ["auth", "status"]) === null) await ende("GitHub CLI ist nicht angemeldet oder nicht installiert. Im Terminal: gh auth login");
+    const name = path.basename(process.cwd()).toLowerCase().replace(/[^a-z0-9._-]/g, "-").replace(/^-+|-+$/g, "") || "meine-app";
+    schritt = "github-repo anlegen";
+    console.error("Kein GitHub-Repo gefunden — lege privates Repo \"" + name + "\" an …");
+    if (lauf("gh", ["repo", "create", name, "--private", "--source", ".", "--remote", "origin", "--push"]) === null) await ende("Konnte das Repo \"" + name + "\" nicht anlegen (Name schon vergeben?). Von Hand: gh repo create <anderer-name> --private --source . --remote origin --push");
+    herkunft = lauf("git", ["remote", "get-url", "origin"]);
+  }
+  const m = /github\.com[:/]([^/]+)\/([^/]+?)(\.git)?$/.exec(herkunft || "");
+  if (!m) await ende("Dieser Ordner hat kein GitHub-Repository (git remote origin fehlt). Ist der richtige Ordner offen?");
   const repo = m[1] + "/" + m[2]; repoName = repo;
 
   if (args[0] === "status") { console.log(JSON.stringify(await ruf("GET", "/api/status?repo=" + encodeURIComponent(repo)), null, 2)); }
