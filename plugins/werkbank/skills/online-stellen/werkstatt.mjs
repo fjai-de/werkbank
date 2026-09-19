@@ -52,7 +52,7 @@ if (args[0] === "einrichten") {
 
     schritt = "gh-anmeldung pruefen";
     if (lauf("gh", ["auth", "status"]) === null) await ende("GitHub CLI ist nicht angemeldet oder nicht installiert. Im Terminal: gh auth login");
-    const ich = await ruf("GET", "/api/ich");
+    const ich = await ruf("GET", "/api/ich?repo=" + encodeURIComponent(repo));      // je Repo ein eigener Schluessel — GitHub laesst keinen doppelt zu
     schritt = "leseschluessel eintragen";
     // 1) Leseschluessel des Servers ans eigene Repo (nur lesen)
     const da = lauf("gh", ["api", `repos/${repo}/keys`, "-q", ".[].key"]) || "";
