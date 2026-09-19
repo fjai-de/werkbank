@@ -8,7 +8,21 @@
 #   ... -Probe               nur anzeigen, was passieren wuerde
 #
 # Der Installer bringt KEINE Zugangsdaten mit und fragt keine ab.
-param([switch]$OhneApps, [switch]$Probe, [switch]$NurLaden, [string]$Helfer = "fj70", [string]$Org = "fjai-de")
+param([switch]$OhneApps, [switch]$Probe, [switch]$NurLaden, [string]$AdminTeil = "", [string]$Helfer = "fj70", [string]$Org = "fjai-de")
+
+# ---------- Admin-Teil: wird vom Hauptlauf EINMAL mit Adminrechten gestartet und installiert alle maschinenweiten Pakete ----------
+if ($AdminTeil) {
+  $ergebnis = @{}
+  foreach ($e in (Get-Content $AdminTeil -Raw | ConvertFrom-Json)) {
+    try {
+      if ($e.Art -eq "msi") { $pr = Start-Process msiexec.exe -ArgumentList "/i `"$($e.Datei)`" /qn /norestart" -Wait -PassThru; $ok = $pr.ExitCode -in 0, 3010 }
+      else { $pr = Start-Process $e.Datei -ArgumentList "/VERYSILENT /NORESTART /NOCANCEL /SP-" -Wait -PassThru; $ok = $pr.ExitCode -eq 0 }
+      $ergebnis[$e.Name] = if ($ok) { "ok" } else { "Exit $($pr.ExitCode)" }
+    } catch { $ergebnis[$e.Name] = [string]$_ }
+  }
+  $ergebnis | ConvertTo-Json | Set-Content "$AdminTeil.ergebnis" -Encoding UTF8
+  exit 0
+}
 
 $WerkbankRepo = "https://github.com/fjai-de/werkbank"
 $Hier = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -71,9 +85,6 @@ function HolePaket($P, $Ziel) {
 function Installiere($P) {
   $datei = HolePaket $P (Join-Path $env:TEMP "werkbank-pakete")
   switch ($P.Art) {
-    # Maschinenweite Installer fragen einmal nach Adminrechten (UAC) — der Rest laeuft im eigenen Benutzer
-    "msi"    { $pr = Start-Process msiexec.exe -ArgumentList "/i `"$datei`" /qn /norestart" -Verb RunAs -Wait -PassThru; if ($pr.ExitCode -notin 0, 3010) { throw "msiexec Exit $($pr.ExitCode)" } }
-    "inno"   { $pr = Start-Process $datei -ArgumentList "/VERYSILENT /NORESTART /NOCANCEL /SP-" -Verb RunAs -Wait -PassThru; if ($pr.ExitCode -ne 0) { throw "Exit $($pr.ExitCode)" } }
     "vscode" { $pr = Start-Process $datei -ArgumentList "/VERYSILENT /NORESTART /MERGETASKS=!runcode,addtopath" -Wait -PassThru; if ($pr.ExitCode -ne 0) { throw "Exit $($pr.ExitCode)" } }
     "nsis"   { $pr = Start-Process $datei -ArgumentList "/S" -Wait -PassThru; if ($pr.ExitCode -ne 0) { throw "Exit $($pr.ExitCode)" } }
     "zip"    { $bin = "$env:USERPROFILE\.local\bin"; New-Item -ItemType Directory -Force -Path $bin | Out-Null
@@ -99,22 +110,60 @@ if ($NurLaden) {
   exit 0
 }
 
-Schritt "1/7 Programme laden und installieren"
+Schritt "1/8 Programme laden und installieren"
 if (Test-Path $Pakete) { Write-Host "   Quelle: Ordner pakete (USB-Stick), fehlendes wird aus dem Netz geladen" } else { Write-Host "   Quelle: direkt vom Hersteller" }
-foreach ($P in $Programme) {
-  if ($P.App -and $OhneApps) { continue }
-  $da = if ($P.Befehl) { Hat $P.Befehl } else { Test-Path $P.Pfad }
-  if ($da) { Write-Host "   $($P.Name) vorhanden"; continue }
-  if (Versuch $P.Name { Installiere $P }) { if (-not $Probe) { Write-Host "   $($P.Name) installiert" } }
+$Fehlend = @($Programme | Where-Object { -not ($_.App -and $OhneApps) } | Where-Object { if ($_.Befehl) { -not (Hat $_.Befehl) } else { -not (Test-Path $_.Pfad) } })
+foreach ($P in ($Programme | Where-Object { $Fehlend -notcontains $_ })) { Write-Host "   $($P.Name) vorhanden" }
+if ($Probe) { foreach ($P in $Fehlend) { Write-Host "   [probe] $($P.Name)" } }
+else {
+  $Zwischen = Join-Path $env:TEMP "werkbank-pakete"
+  # a) maschinenweite Pakete: alle laden, dann EINE Adminabfrage fuer alle zusammen
+  $Admin = @(); foreach ($P in ($Fehlend | Where-Object { $_.Art -in "msi", "inno" })) {
+    try { $Admin += @{ Name = $P.Name; Art = $P.Art; Datei = (HolePaket $P $Zwischen) } } catch { Write-Host "   ! $($P.Name): $_" -ForegroundColor Yellow; $Fehler.Add($P.Name) } }
+  if ($Admin.Count) {
+    $Liste = Join-Path $env:PUBLIC "werkbank-admin-$PID.json"
+    ConvertTo-Json @($Admin) | Set-Content $Liste -Encoding UTF8
+    Write-Host "   Installiere $(($Admin | ForEach-Object { $_.Name }) -join ', ') - Windows fragt EINMAL nach Adminrechten: bitte 'Ja'." -ForegroundColor Cyan
+    try {
+      Start-Process powershell.exe -Verb RunAs -Wait -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -AdminTeil `"$Liste`""
+      $erg = Get-Content "$Liste.ergebnis" -Raw | ConvertFrom-Json
+      foreach ($a in $Admin) { $r = $erg.($a.Name); if ($r -eq "ok") { Write-Host "   $($a.Name) installiert" } else { Write-Host "   ! $($a.Name): $r" -ForegroundColor Yellow; $Fehler.Add($a.Name) } }
+    } catch { Write-Host "   ! Adminrechte abgelehnt oder Fehler: $_" -ForegroundColor Red; $Admin | ForEach-Object { $Fehler.Add($_.Name) } }
+    Remove-Item $Liste, "$Liste.ergebnis" -ErrorAction SilentlyContinue
+  }
+  # b) Benutzer-Pakete ohne Adminrechte
+  foreach ($P in ($Fehlend | Where-Object { $_.Art -notin "msi", "inno" })) { if (Versuch $P.Name { Installiere $P }) { Write-Host "   $($P.Name) installiert" } }
   PfadNeuLaden
+  if (-not (Hat git)) { $env:Path += ";$env:ProgramFiles\Git\cmd" }
 }
 
-Schritt "2/7 Claude Code"
+Schritt "2/8 Claude Code"
 if (Hat claude) { Write-Host "   vorhanden" }
 else { Versuch "Claude Code" { Invoke-RestMethod https://claude.ai/install.ps1 | Invoke-Expression } | Out-Null; PfadNeuLaden }
 if (Hat code) { Versuch "VS-Code-Erweiterung" { code --install-extension anthropic.claude-code --force | Out-Null } | Out-Null }
 
-Schritt "3/7 Werkbank-Plugin"
+Schritt "3/8 Anmelden - jeweils mit dem EIGENEN Konto, der Browser oeffnet sich von selbst"
+if (-not $Probe) {
+  if (Hat gh) {
+    gh auth status 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) { Write-Host "   GitHub: Code kopieren, im Browser einfuegen, bestaetigen." -ForegroundColor Cyan; gh auth login --hostname github.com --git-protocol https --web }
+    gh auth setup-git 2>$null | Out-Null
+    # Git-Absender aus dem GitHub-Konto - niemand muss etwas tippen
+    if (-not (git config --global user.name)) {
+      $ich = gh api user 2>$null | ConvertFrom-Json
+      if ($ich.login) { git config --global user.name $(if ($ich.name) { $ich.name } else { $ich.login }); git config --global user.email "$($ich.id)+$($ich.login)@users.noreply.github.com"; Write-Host "   Git-Absender: $($ich.login)" }
+    }
+    # Einladung in die Organisation annehmen
+    if ($Org) {
+      $stand = gh api "user/memberships/orgs/$Org" -q .state 2>$null
+      if ($stand -eq "pending") { gh api -X PATCH "user/memberships/orgs/$Org" -f state=active 2>$null | Out-Null; if ($LASTEXITCODE -ne 0) { Start-Process "https://github.com/orgs/$Org/invitation"; Read-Host "   Einladung im Browser annehmen, dann Enter" | Out-Null } else { Write-Host "   Einladung in $Org angenommen" } }
+      elseif ($stand -ne "active") { Write-Host "   Noch keine Einladung in $Org - Workshop-Leiter Bescheid geben. Es geht trotzdem weiter." -ForegroundColor Yellow }
+    }
+  }
+  if (Hat claude) { claude auth status 2>$null | Out-Null; if ($LASTEXITCODE -ne 0) { Write-Host "   Claude: im Browser mit dem eigenen Claude-Konto anmelden." -ForegroundColor Cyan; claude auth login --claudeai } else { Write-Host "   Claude: angemeldet" } }
+}
+
+Schritt "4/8 Werkbank-Plugin"
 $Quelle = $WerkbankRepo
 if (-not $Probe) {
   git ls-remote $WerkbankRepo 2>$null | Out-Null
@@ -136,7 +185,7 @@ Write-Host "   Quelle: $Quelle"
 Versuch "Marketplace" { claude plugin marketplace add $Quelle } | Out-Null
 Versuch "Plugin werkbank" { claude plugin install werkbank@fj-werkbank } | Out-Null
 
-Schritt "4/7 Feste Pfade, Helfer, Commit-Sperre"
+Schritt "5/8 Feste Pfade, Helfer, Commit-Sperre"
 $WB = "$env:USERPROFILE\.claude\werkbank"; $Hooks = "$env:USERPROFILE\.claude\git-hooks"
 if (-not $Probe) {
   New-Item -ItemType Directory -Force -Path $WB, $Hooks | Out-Null
@@ -152,7 +201,7 @@ if (-not $Probe) {
   }
 }
 
-Schritt "5/7 MCP-Server (ohne Schluessel)"
+Schritt "6/8 MCP-Server (ohne Schluessel)"
 # Unter Windows muss npx ueber 'cmd /c' gestartet werden, sonst findet Claude Code den Server nicht.
 foreach ($m in @(@("playwright", "@playwright/mcp@latest"), @("context7", "@upstash/context7-mcp@latest"))) {
   $n = $m[0]; $p = $m[1]
@@ -160,7 +209,7 @@ foreach ($m in @(@("playwright", "@playwright/mcp@latest"), @("context7", "@upst
   Versuch "MCP $n" { claude mcp add --scope user $n -- cmd /c npx -y $p | Out-Null } | Out-Null
 }
 
-Schritt "6/7 graphify und fremde Skills (von der Originalquelle)"
+Schritt "7/8 graphify und fremde Skills (von der Originalquelle)"
 if (-not (Hat graphify)) { Versuch "graphify" { uv tool install graphifyy | Out-Null } | Out-Null; PfadNeuLaden }
 if (Hat graphify) { Versuch "graphify-Skill" { graphify install --platform windows | Out-Null } | Out-Null }
 Push-Location $env:USERPROFILE
@@ -173,7 +222,7 @@ foreach ($zeile in Get-Content "$Hier\fremd-skills.txt") {
 }
 Pop-Location
 
-Schritt "7/7 CLAUDE.md und Notiz-Vault"
+Schritt "8/8 CLAUDE.md und Notiz-Vault"
 if (-not $Probe) {
   $CM = "$env:USERPROFILE\.claude\CLAUDE.md"; $Block = [IO.File]::ReadAllText("$Hier\CLAUDE-block.md")
   $Alt = if (Test-Path $CM) { [IO.File]::ReadAllText($CM) } else { "" }
@@ -187,12 +236,6 @@ if (-not $Probe) {
 
 Write-Host ""; Write-Host "Fertig." -ForegroundColor Green
 if ($Fehler.Count -gt 0) { Write-Host "Nicht geklappt:" -ForegroundColor Yellow; $Fehler | ForEach-Object { Write-Host "   - $_" } }
-Write-Host @"
-
-Jetzt noch selbst - jede Anmeldung mit dem EIGENEN Konto (neues Terminal oeffnen!):
-  1. claude            -> im Browser mit dem eigenen Claude-Konto anmelden
-  2. gh auth login     -> GitHub.com / HTTPS / im Browser anmelden
-  3. git config --global user.name "Vorname Nachname"
-     git config --global user.email "die-github-mailadresse"
-  4. VS Code oeffnen, Claude-Symbol anklicken, "start" schreiben
-"@
+$Projekte = "$env:USERPROFILE\Projekte"; if (-not $Probe) { New-Item -ItemType Directory -Force -Path $Projekte | Out-Null; PfadNeuLaden; if (Hat code) { code $Projekte } }
+Write-Host ""
+Write-Host "VS Code ist offen. Links das Claude-Symbol anklicken und 'start' schreiben." -ForegroundColor Green

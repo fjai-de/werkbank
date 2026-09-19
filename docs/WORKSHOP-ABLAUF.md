@@ -24,16 +24,13 @@ Richtwert: 20–30 Minuten je Rechner, die meiste Zeit ist Download. Alle gleich
 
 ## Schritt 2 — Installer (15 min)
 
-Mac: `bash install/install.sh` · Windows: Doppelklick auf `Werkbank-einrichten-Windows.cmd` (UAC-Abfragen mit „Ja" bestätigen)
+Mac: Doppelklick auf `Werkbank-einrichten-Mac.command` · Windows: Doppelklick auf `Werkbank-einrichten-Windows.cmd` (UAC-Abfragen mit „Ja" bestätigen)
 Der Installer fragt die GitHub-Anmeldung selbst ab (Browser). Organisation `fjai-de` ist voreingestellt; ohne Organisation: `--org ""`.
 
-## Schritt 3 — Anmelden (5 min, jeder selbst)
+## Schritt 3 — entfällt
 
-```
-claude              eigenes Claude-Konto, im Browser
-gh auth login       GitHub.com · HTTPS · Browser
-git config --global user.name "…"   /   user.email "…"
-```
+Anmeldung bei GitHub und Claude, Git-Absender und Annahme der Einladung erledigt der Installer selbst.
+Der Teilnehmer bestätigt nur im Browser. **Reihenfolge wichtig:** GitHub-Konto anlegen → Leiter lädt ein → dann erst Installer starten.
 
 ## Schritt 4 — Funktionsprobe (5 min)
 

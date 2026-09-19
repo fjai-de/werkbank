@@ -57,6 +57,34 @@ else versuch "Claude Code" /bin/bash -c "curl -fsSL https://claude.ai/install.sh
 CODE="/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"; hat code && CODE="code"
 if [ -x "$CODE" ] || hat code; then versuch "VS-Code-Erweiterung" "$CODE" --install-extension anthropic.claude-code --force >/dev/null; fi
 
+schritt "4b Anmelden — jeweils mit dem EIGENEN Konto, der Browser öffnet sich von selbst"
+if [ $PROBE = 0 ]; then
+  if hat gh; then
+    if ! gh auth status >/dev/null 2>&1; then echo "   GitHub: Code kopieren, im Browser einfügen, bestätigen."; gh auth login --hostname github.com --git-protocol https --web || true; fi
+    gh auth setup-git >/dev/null 2>&1 || true
+    # Git-Absender aus dem GitHub-Konto — niemand muss etwas tippen
+    if [ -z "$(git config --global user.name 2>/dev/null)" ]; then
+      LOGIN="$(gh api user -q .login 2>/dev/null || true)"
+      if [ -n "$LOGIN" ]; then
+        git config --global user.name "$(gh api user -q '.name // .login')"
+        git config --global user.email "$(gh api user -q '"\(.id)+\(.login)@users.noreply.github.com"')"
+        echo "   Git-Absender: $LOGIN"; fi
+    fi
+    # Einladung in die Organisation annehmen
+    if [ -n "$ORG" ]; then
+      STAND="$(gh api "user/memberships/orgs/$ORG" -q .state 2>/dev/null || true)"
+      if [ "$STAND" = "pending" ]; then
+        if gh api -X PATCH "user/memberships/orgs/$ORG" -f state=active >/dev/null 2>&1; then echo "   Einladung in $ORG angenommen"
+        else open "https://github.com/orgs/$ORG/invitation"; read -r -p "   Einladung im Browser annehmen, dann Enter " _; fi
+      elif [ "$STAND" != "active" ]; then echo "${GELB}   Noch keine Einladung in $ORG — Workshop-Leiter Bescheid geben. Es geht trotzdem weiter.${AUS}"; fi
+    fi
+  fi
+  if hat claude; then
+    if claude auth status >/dev/null 2>&1; then echo "   Claude: angemeldet"
+    else echo "   Claude: im Browser mit dem eigenen Claude-Konto anmelden."; claude auth login --claudeai || true; fi
+  fi
+fi
+
 schritt "5/9 Werkbank-Plugin"
 QUELLE="$WERKBANK_REPO"
 # Das Repo ist privat: Zugriff hat nur, wer eingeladen ist UND bei GitHub angemeldet ist.
@@ -118,12 +146,8 @@ fi
 
 echo; echo "${GRUEN}Fertig.${AUS}"
 [ ${#FEHLER[@]} -gt 0 ] && { echo "${GELB}Nicht geklappt:${AUS}"; printf '   - %s\n' "${FEHLER[@]}"; }
-cat <<EOT
-
-Jetzt noch selbst — jede Anmeldung mit dem EIGENEN Konto:
-  1. claude            → im Browser mit dem eigenen Claude-Konto anmelden
-  2. gh auth login     → GitHub.com · HTTPS · im Browser anmelden
-  3. git config --global user.name "Vorname Nachname"
-     git config --global user.email "die-github-mailadresse"
-  4. VS Code oeffnen, Claude-Symbol anklicken, "start" schreiben
-EOT
+if [ $PROBE = 0 ]; then
+  mkdir -p "$HOME/Projekte"
+  if [ -d "/Applications/Visual Studio Code.app" ]; then open -a "Visual Studio Code" "$HOME/Projekte"; fi
+fi
+echo; echo "${GRUEN}VS Code ist offen. Links das Claude-Symbol anklicken und 'start' schreiben.${AUS}"

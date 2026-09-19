@@ -14,13 +14,12 @@ Dieses Repository ist **privat**. Zugriff hat, wer vom Workshop-Leiter in die Or
 die Einladung angenommen hat und mit `gh auth login` angemeldet ist. Im Workshop kommt der Installer vom USB-Stick;
 er meldet dich bei GitHub an und hängt sich danach selbst ans Repo.
 
-**Mac** — Terminal öffnen:
+**Mac** — im Ordner `werkbank` die Datei **`Werkbank-einrichten-Mac.command`** doppelklicken
+(beim ersten Mal: Rechtsklick → Öffnen). Fragt einmal nach dem Mac-Passwort.
 
-```bash
-git clone https://github.com/fjai-de/werkbank ~/werkbank && bash ~/werkbank/install/install.sh
-```
-
-(Ohne Git: ZIP von GitHub laden, entpacken, `bash install/install.sh` im Ordner.)
+Auf beiden Systemen läuft danach alles von allein: Programme, Plugin, Skills — zwischendurch öffnet sich zweimal der
+Browser zur Anmeldung (GitHub, Claude), am Ende startet VS Code. Git-Name und -Mail kommen aus dem GitHub-Konto,
+die Einladung in die Organisation wird selbst angenommen.
 
 **Windows 10/11** — im Ordner `werkbank` die Datei **`Werkbank-einrichten-Windows.cmd`** doppelklicken.
 Sie lädt alle Programme selbst vom Hersteller (Git, Node, GitHub CLI, uv, cloudflared, VS Code, Obsidian, Claude Code) und
