@@ -41,8 +41,8 @@ if ! hat brew; then
     echo 'eval "$('"$(command -v brew)"' shellenv)"' >> "$HOME/.zprofile"; fi
 else echo "   vorhanden"; fi
 
-schritt "2/9 Grundwerkzeuge: git, node, gh, uv"
-for p in git node gh uv; do hat "$p" && echo "   $p vorhanden" || versuch "brew install $p" brew install "$p"; done
+schritt "2/9 Grundwerkzeuge: git, node, gh, uv, cloudflared"
+for p in git node gh uv cloudflared; do hat "$p" && echo "   $p vorhanden" || versuch "brew install $p" brew install "$p"; done
 
 schritt "3/9 Programme: VS Code, Obsidian"
 if [ $APPS = 1 ]; then

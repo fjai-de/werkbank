@@ -22,13 +22,12 @@ git clone https://github.com/fjai-de/werkbank ~/werkbank && bash ~/werkbank/inst
 
 (Ohne Git: ZIP von GitHub laden, entpacken, `bash install/install.sh` im Ordner.)
 
-**Windows 10/11** — PowerShell öffnen:
+**Windows 10/11** — im Ordner `werkbank` die Datei **`Werkbank-einrichten-Windows.cmd`** doppelklicken.
+Sie lädt alle Programme selbst vom Hersteller (Git, Node, GitHub CLI, uv, cloudflared, VS Code, Obsidian, Claude Code) und
+installiert sie. Windows fragt dabei mehrmals nach Adminrechten — jeweils „Ja". Kein winget, kein Suchen.
 
-```powershell
-git clone https://github.com/fjai-de/werkbank $HOME\werkbank; powershell -ExecutionPolicy Bypass -File $HOME\werkbank\install\install.ps1
-```
-
-(Ohne Git: ZIP laden, entpacken, `powershell -ExecutionPolicy Bypass -File install\install.ps1`.)
+Für den Workshop ohne WLAN-Engpass vorab einmal `install.ps1 -NurLaden` ausführen (geht auch mit `pwsh` auf dem Mac):
+Die Installer landen in `install/pakete/` (rund 700 MB, nicht im Repo) und werden vom Stick statt aus dem Netz genommen.
 
 Der Installer lässt sich beliebig oft wiederholen. `--probe` bzw. `-Probe` zeigt nur, was passieren würde.
 

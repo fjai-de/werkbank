@@ -6,6 +6,7 @@ Richtwert: 20–30 Minuten je Rechner, die meiste Zeit ist Download. Alle gleich
 
 - [ ] Repo `fjai-de/werkbank` ist gepusht (privat)
 - [ ] Ordner `werkbank` als ZIP auf zwei USB-Sticks — **der Hauptweg**, weil das Repo privat ist
+- [ ] `install/pakete/` ist gefüllt (`pwsh install/install.ps1 -NurLaden`) und mit auf dem Stick
 - [ ] Genug Plätze in der Organisation: `bash leiter/einladen.sh fjai-de --stand`
 - [ ] Jeder Teilnehmer hat ein **bezahltes Claude-Konto** (Pro oder Max) — vorab per Mail abfragen
 - [ ] Jeder hat sein Handy für die Zwei-Faktor-Anmeldung dabei
@@ -23,7 +24,7 @@ Richtwert: 20–30 Minuten je Rechner, die meiste Zeit ist Download. Alle gleich
 
 ## Schritt 2 — Installer (15 min)
 
-Mac: `bash install/install.sh` · Windows: `powershell -ExecutionPolicy Bypass -File install\install.ps1`
+Mac: `bash install/install.sh` · Windows: Doppelklick auf `Werkbank-einrichten-Windows.cmd` (UAC-Abfragen mit „Ja" bestätigen)
 Der Installer fragt die GitHub-Anmeldung selbst ab (Browser). Organisation `fjai-de` ist voreingestellt; ohne Organisation: `--org ""`.
 
 ## Schritt 3 — Anmelden (5 min, jeder selbst)

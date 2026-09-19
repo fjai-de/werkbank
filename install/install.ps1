@@ -4,10 +4,11 @@
 #   ... -OhneApps            VS Code / Obsidian nicht installieren
 #   ... -Helfer <github>     GitHub-Name des Helfers (Standard: fj70)
 #   ... -Org <name>          Werkstatt-Organisation auf GitHub (optional)
+#   ... -NurLaden         alle Programme nur nach install\pakete laden (fuer den USB-Stick; laeuft auch mit pwsh auf dem Mac)
 #   ... -Probe               nur anzeigen, was passieren wuerde
 #
 # Der Installer bringt KEINE Zugangsdaten mit und fragt keine ab.
-param([switch]$OhneApps, [switch]$Probe, [string]$Helfer = "fj70", [string]$Org = "fjai-de")
+param([switch]$OhneApps, [switch]$Probe, [switch]$NurLaden, [string]$Helfer = "fj70", [string]$Org = "fjai-de")
 
 $WerkbankRepo = "https://github.com/fjai-de/werkbank"
 $Hier = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -23,36 +24,97 @@ function Versuch([string]$Was, [scriptblock]$Tun) {
   try { & $Tun; if ($LASTEXITCODE -ne $null -and $LASTEXITCODE -ne 0) { throw "Exit $LASTEXITCODE" }; return $true }
   catch { Write-Host "   ! $Was fehlgeschlagen - mache weiter ($_)" -ForegroundColor Yellow; $Fehler.Add($Was); return $false }
 }
-function Winget($Id, $Name) {
-  Versuch $Name { winget install --id $Id -e --silent --accept-package-agreements --accept-source-agreements | Out-Null
-    # winget meldet "bereits installiert" mit einem Exit-Code ungleich 0 — das ist kein Fehler
-    if ($LASTEXITCODE -eq -1978335189) { $global:LASTEXITCODE = 0 } } | Out-Null
+# ---------- Programme: erst install\pakete (USB-Stick), sonst direkt vom Hersteller laden. Kein winget noetig. ----------
+$Pakete = Join-Path $Hier "pakete"
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+$ProgressPreference = "SilentlyContinue"   # sonst ist Invoke-WebRequest zehnmal langsamer
+
+function GitHubDatei($Repo, $Muster) {
+  # Nicht "latest": manche Releases tragen nur Dateien fuer andere Systeme (Obsidian: nur .apk). Juengstes MIT passender Datei nehmen.
+  $liste = Invoke-RestMethod "https://api.github.com/repos/$Repo/releases?per_page=10" -Headers @{ "User-Agent" = "werkbank-installer" }
+  foreach ($r in $liste) {
+    if ($r.prerelease -or $r.draft) { continue }
+    $a = $r.assets | Where-Object { $_.name -match $Muster } | Select-Object -First 1
+    if ($a) { return @{ Url = $a.browser_download_url; Name = $a.name } }
+  }
+  throw "Keine Datei passend zu $Muster in $Repo"
+}
+function NodeDatei {
+  # Erst in eine Variable: Invoke-RestMethod gibt die Liste sonst als EIN Objekt weiter
+  $liste = Invoke-RestMethod "https://nodejs.org/dist/index.json"
+  $v = ($liste | Where-Object { $_.lts } | Select-Object -First 1).version
+  if ($v -notmatch "^v\d+\.\d+\.\d+$") { throw "Node-Version nicht ermittelt: $v" }
+  return @{ Url = "https://nodejs.org/dist/$v/node-$v-x64.msi"; Name = "node-$v-x64.msi" }
+}
+# Name = Kennung, Datei = Muster im Ordner pakete, Quelle = liefert Url+Name, Art = wie installiert wird
+$Programme = @(
+  @{ Name = "Git";         Befehl = "git";         Datei = "Git-*-64-bit.exe";              Art = "inno"; Quelle = { GitHubDatei "git-for-windows/git" "^Git-[\d.]+-64-bit\.exe$" } },
+  @{ Name = "Node";        Befehl = "node";        Datei = "node-v*-x64.msi";               Art = "msi";  Quelle = { NodeDatei } },
+  @{ Name = "GitHub CLI";  Befehl = "gh";          Datei = "gh_*_windows_amd64.msi";        Art = "msi";  Quelle = { GitHubDatei "cli/cli" "_windows_amd64\.msi$" } },
+  @{ Name = "uv";          Befehl = "uv";          Datei = "uv-x86_64-pc-windows-msvc.zip"; Art = "zip";  Quelle = { GitHubDatei "astral-sh/uv" "^uv-x86_64-pc-windows-msvc\.zip$" } },
+  @{ Name = "cloudflared"; Befehl = "cloudflared"; Datei = "cloudflared-windows-amd64.msi"; Art = "msi";  Quelle = { GitHubDatei "cloudflare/cloudflared" "^cloudflared-windows-amd64\.msi$" } },
+  @{ Name = "VS Code";     Befehl = "code";        Datei = "VSCodeUserSetup-x64*.exe";      Art = "vscode"; App = $true; Quelle = { @{ Url = "https://code.visualstudio.com/sha/download?build=stable&os=win32-x64-user"; Name = "VSCodeUserSetup-x64.exe" } } },
+  @{ Name = "Obsidian";    Pfad = "$env:LOCALAPPDATA\Programs\Obsidian\Obsidian.exe"; Datei = "Obsidian-*.exe"; Art = "nsis"; App = $true; Quelle = { GitHubDatei "obsidianmd/obsidian-releases" "^Obsidian-[\d.]+\.exe$" } }
+)
+
+function HolePaket($P, $Ziel) {
+  $da = Get-ChildItem $Pakete -Filter $P.Datei -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+  if ($da) { return $da.FullName }
+  $q = & $P.Quelle
+  New-Item -ItemType Directory -Force -Path $Ziel | Out-Null
+  $aus = Join-Path $Ziel $q.Name
+  Write-Host "   lade $($q.Name) ..."
+  Invoke-WebRequest -Uri $q.Url -OutFile $aus -UseBasicParsing -Headers @{ "User-Agent" = "werkbank-installer" }
+  if ((Get-Item $aus).Length -lt 1MB) { throw "Download zu klein: $aus" }
+  return $aus
+}
+function Installiere($P) {
+  $datei = HolePaket $P (Join-Path $env:TEMP "werkbank-pakete")
+  switch ($P.Art) {
+    # Maschinenweite Installer fragen einmal nach Adminrechten (UAC) — der Rest laeuft im eigenen Benutzer
+    "msi"    { $pr = Start-Process msiexec.exe -ArgumentList "/i `"$datei`" /qn /norestart" -Verb RunAs -Wait -PassThru; if ($pr.ExitCode -notin 0, 3010) { throw "msiexec Exit $($pr.ExitCode)" } }
+    "inno"   { $pr = Start-Process $datei -ArgumentList "/VERYSILENT /NORESTART /NOCANCEL /SP-" -Verb RunAs -Wait -PassThru; if ($pr.ExitCode -ne 0) { throw "Exit $($pr.ExitCode)" } }
+    "vscode" { $pr = Start-Process $datei -ArgumentList "/VERYSILENT /NORESTART /MERGETASKS=!runcode,addtopath" -Wait -PassThru; if ($pr.ExitCode -ne 0) { throw "Exit $($pr.ExitCode)" } }
+    "nsis"   { $pr = Start-Process $datei -ArgumentList "/S" -Wait -PassThru; if ($pr.ExitCode -ne 0) { throw "Exit $($pr.ExitCode)" } }
+    "zip"    { $bin = "$env:USERPROFILE\.local\bin"; New-Item -ItemType Directory -Force -Path $bin | Out-Null
+               $tmp = Join-Path $env:TEMP "werkbank-uv"; Expand-Archive $datei $tmp -Force
+               Get-ChildItem $tmp -Recurse -Filter *.exe | Copy-Item -Destination $bin -Force
+               $u = [Environment]::GetEnvironmentVariable("Path", "User"); if ($u -notlike "*$bin*") { [Environment]::SetEnvironmentVariable("Path", "$u;$bin", "User") } }
+  }
+  $global:LASTEXITCODE = 0
 }
 
-Schritt "1/9 winget"
-if (-not (Hat winget)) { Write-Host "winget fehlt. Bitte 'App-Installer' aus dem Microsoft Store installieren und neu starten." -ForegroundColor Red; exit 1 }
-Write-Host "   vorhanden"
+if ($NurLaden) {
+  Schritt "Lade alle Programme nach $Pakete"
+  New-Item -ItemType Directory -Force -Path $Pakete | Out-Null
+  foreach ($P in $Programme) {
+    try { $q = & $P.Quelle; $aus = Join-Path $Pakete $q.Name
+      if (Test-Path $aus) { Write-Host "   $($q.Name) vorhanden"; continue }
+      Get-ChildItem $Pakete -Filter $P.Datei -ErrorAction SilentlyContinue | Remove-Item -Force   # alte Version raus
+      Write-Host "   lade $($q.Name) ..."; Invoke-WebRequest -Uri $q.Url -OutFile $aus -UseBasicParsing -Headers @{ "User-Agent" = "werkbank-installer" }
+    } catch { Write-Host "   ! $($P.Name): $_" -ForegroundColor Yellow; $Fehler.Add($P.Name) }
+  }
+  Get-ChildItem $Pakete | Select-Object Name, @{ n = "MB"; e = { [int]($_.Length / 1MB) } } | Format-Table -AutoSize
+  if ($Fehler.Count) { Write-Host "Nicht geladen: $($Fehler -join ', ')" -ForegroundColor Yellow } else { Write-Host "Alles da. Ordner 'werkbank' komplett auf den Stick kopieren." -ForegroundColor Green }
+  exit 0
+}
 
-Schritt "2/9 Grundwerkzeuge: Git, Node, GitHub CLI, uv"
-if (-not (Hat git))  { Winget "Git.Git" "Git" }            else { Write-Host "   git vorhanden" }
-if (-not (Hat node)) { Winget "OpenJS.NodeJS.LTS" "Node" } else { Write-Host "   node vorhanden" }
-if (-not (Hat gh))   { Winget "GitHub.cli" "GitHub CLI" }  else { Write-Host "   gh vorhanden" }
-if (-not (Hat uv))   { Winget "astral-sh.uv" "uv" }        else { Write-Host "   uv vorhanden" }
-PfadNeuLaden
-
-Schritt "3/9 Programme: VS Code, Obsidian"
-if ($OhneApps) { Write-Host "   uebersprungen" } else {
-  if (-not (Hat code)) { Winget "Microsoft.VisualStudioCode" "VS Code" } else { Write-Host "   VS Code vorhanden" }
-  if (-not (Test-Path "$env:LOCALAPPDATA\Programs\Obsidian\Obsidian.exe")) { Winget "Obsidian.Obsidian" "Obsidian" } else { Write-Host "   Obsidian vorhanden" }
+Schritt "1/7 Programme laden und installieren"
+if (Test-Path $Pakete) { Write-Host "   Quelle: Ordner pakete (USB-Stick), fehlendes wird aus dem Netz geladen" } else { Write-Host "   Quelle: direkt vom Hersteller" }
+foreach ($P in $Programme) {
+  if ($P.App -and $OhneApps) { continue }
+  $da = if ($P.Befehl) { Hat $P.Befehl } else { Test-Path $P.Pfad }
+  if ($da) { Write-Host "   $($P.Name) vorhanden"; continue }
+  if (Versuch $P.Name { Installiere $P }) { if (-not $Probe) { Write-Host "   $($P.Name) installiert" } }
   PfadNeuLaden
 }
 
-Schritt "4/9 Claude Code"
+Schritt "2/7 Claude Code"
 if (Hat claude) { Write-Host "   vorhanden" }
 else { Versuch "Claude Code" { Invoke-RestMethod https://claude.ai/install.ps1 | Invoke-Expression } | Out-Null; PfadNeuLaden }
 if (Hat code) { Versuch "VS-Code-Erweiterung" { code --install-extension anthropic.claude-code --force | Out-Null } | Out-Null }
 
-Schritt "5/9 Werkbank-Plugin"
+Schritt "3/7 Werkbank-Plugin"
 $Quelle = $WerkbankRepo
 if (-not $Probe) {
   git ls-remote $WerkbankRepo 2>$null | Out-Null
@@ -74,7 +136,7 @@ Write-Host "   Quelle: $Quelle"
 Versuch "Marketplace" { claude plugin marketplace add $Quelle } | Out-Null
 Versuch "Plugin werkbank" { claude plugin install werkbank@fj-werkbank } | Out-Null
 
-Schritt "6/9 Feste Pfade, Helfer, Commit-Sperre"
+Schritt "4/7 Feste Pfade, Helfer, Commit-Sperre"
 $WB = "$env:USERPROFILE\.claude\werkbank"; $Hooks = "$env:USERPROFILE\.claude\git-hooks"
 if (-not $Probe) {
   New-Item -ItemType Directory -Force -Path $WB, $Hooks | Out-Null
@@ -90,7 +152,7 @@ if (-not $Probe) {
   }
 }
 
-Schritt "7/9 MCP-Server (ohne Schluessel)"
+Schritt "5/7 MCP-Server (ohne Schluessel)"
 # Unter Windows muss npx ueber 'cmd /c' gestartet werden, sonst findet Claude Code den Server nicht.
 foreach ($m in @(@("playwright", "@playwright/mcp@latest"), @("context7", "@upstash/context7-mcp@latest"))) {
   $n = $m[0]; $p = $m[1]
@@ -98,7 +160,7 @@ foreach ($m in @(@("playwright", "@playwright/mcp@latest"), @("context7", "@upst
   Versuch "MCP $n" { claude mcp add --scope user $n -- cmd /c npx -y $p | Out-Null } | Out-Null
 }
 
-Schritt "8/9 graphify und fremde Skills (von der Originalquelle)"
+Schritt "6/7 graphify und fremde Skills (von der Originalquelle)"
 if (-not (Hat graphify)) { Versuch "graphify" { uv tool install graphifyy | Out-Null } | Out-Null; PfadNeuLaden }
 if (Hat graphify) { Versuch "graphify-Skill" { graphify install --platform windows | Out-Null } | Out-Null }
 Push-Location $env:USERPROFILE
@@ -111,7 +173,7 @@ foreach ($zeile in Get-Content "$Hier\fremd-skills.txt") {
 }
 Pop-Location
 
-Schritt "9/9 CLAUDE.md und Notiz-Vault"
+Schritt "7/7 CLAUDE.md und Notiz-Vault"
 if (-not $Probe) {
   $CM = "$env:USERPROFILE\.claude\CLAUDE.md"; $Block = [IO.File]::ReadAllText("$Hier\CLAUDE-block.md")
   $Alt = if (Test-Path $CM) { [IO.File]::ReadAllText($CM) } else { "" }
